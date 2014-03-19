@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Sample</title>
+		<script type="text/javascript" src="https://www.google.com/jsapi"> </script>
+		<script type="text/javascript" src="http://scriptjava.net/source/scriptjava/scriptjava.js"></script>
+		<script type="text/javascript">
+			var ge;
+			var reCord;
+			var refIntId;
+			var la;
+			google.load("earth", "1", {"other_params":"sensor=false"});
+
+			function init() {
+				google.earth.createInstance('map3d', initCB, failureCB);
+//	  			getFly();
+			}
+
+			function initCB(instance) {
+				ge = instance;
+				ge.getWindow().setVisibility(true);
+				ge.getLayerRoot().enableLayerById(ge.LAYER_BORDERS, true);
+	  			ge.getNavigationControl().setVisibility(ge.VISIBILITY_AUTO);
+				la = ge.createLookAt('');
+
+			
+			}
+
+			function failureCB(errorCode) {
+			}
+
+			google.setOnLoadCallback(init);
+	
+			function example() {
+//				alert("example()");
+				getPosition();
+				setTimeout(getFly, 200);
+				
+				//getFly();
+			}
+			
+			function getPosition() {
+			$$a({
+				type:'get',//тип запроса: get,post либо head
+				url:'http://127.0.0.1/olvi/GETlocalPosition.php',//url адрес файла обработчика
+				response:'text',//тип возвращаемого ответа text либо xml
+				error:function(num){
+					var arr=['Your browser does not support Ajax',
+                        'Request failed',
+                        'Address does not exist',
+                        'The waiting time left'];
+					alert(arr[num]);
+				},
+				success:function (data) {//возвращаемый результат от сервера
+						reCord = JSON.parse(data);
+//						alert("Inner "+reCord);
+				}
+			});
+			}
+
+			function getFly() {
+//					alert("getFly()"+reCord);
+
+					var placemark = ge.createPlacemark('');
+					placemark.setName(reCord.time);
+					
+					var icon = ge.createIcon('');
+					icon.setHref('http://127.0.0.1/olvi/plane.png');
+					var style = ge.createStyle(''); //создает новый стиль
+					style.getIconStyle().setIcon(icon); //примен€ет значок к стилю
+					placemark.setStyleSelector(style); //примен€ет стиль к метке
+					
+					la.set(Number(reCord.latitude),Number(reCord.longitude), 0, ge.ALTITUDE_ABSOLUTE, /*-8.541*/0, 70, Number(reCord.altitude)+2000);
+					ge.getView().setAbstractView(la);
+					
+					var point = ge.createPoint('');
+					point.setLatitude(Number(reCord.latitude));
+					point.setLongitude(Number(reCord.longitude));
+					point.setAltitudeMode(ge.ALTITUDE_ABSOLUTE);
+					point.setAltitude(Number(reCord.altitude));
+					placemark.setGeometry(point);
+					ge.getFeatures().appendChild(placemark);
+					var lineStringPlacemark = ge.createPlacemark('');
+					var lineString = ge.createLineString('');
+					lineStringPlacemark.setGeometry(lineString);
+					lineString.setExtrude(true);
+					lineString.setAltitudeMode(ge.ALTITUDE_ABSOLUTE);
+					lineString.getCoordinates().pushLatLngAlt(Number(reCord.latitude), Number(reCord.longitude), Number(reCord.altitude));
+//					lineString.getCoordinates().pushLatLngAlt(Number(reCord.latitude), Number(reCord.longitude), Number(reCord.altitude));
+					
+					lineStringPlacemark.setStyleSelector(ge.createStyle(''));
+					var lineStyle = lineStringPlacemark.getStyleSelector().getLineStyle();
+					lineStyle.setWidth(5);
+					lineStyle.getColor().set('9900ffff');  // формат aabbggrr
+					ge.getFeatures().appendChild(lineStringPlacemark);
+//					clearInterval(refIntId);
+				
+			}
+		</script>
+
+	</head>
+	<body>
+		<div id="menu">
+			<section id="set_coordinates" style="height:3%">
+				<input type="button" onclick="example()" id='sCenter' value="Go" /> 
+			</section>
+		</div>
+		<div id="map3d" style="height: 100%; width: 100%;"></div>
+	</body>
+</html>
