@@ -7,13 +7,16 @@
 		<script type="text/javascript">
 			var ge;
 			var reCord;
+			var reCord2;
 			var refIntId;
 			var la;
+			var flCreP=0;
+			var refIntId;
+			var refIntId2;
 			google.load("earth", "1", {"other_params":"sensor=false"});
 
 			function init() {
 				google.earth.createInstance('map3d', initCB, failureCB);
-//	  			getFly();
 			}
 
 			function initCB(instance) {
@@ -31,15 +34,11 @@
 
 			google.setOnLoadCallback(init);
 	
-			function example() {
-//				alert("example()");
-				getPosition();
-				setTimeout(getFly, 200);
-				
-				//getFly();
+			function go() {
+				getPosition(true);
 			}
 			
-			function getPosition() {
+			function getPosition(flag) {
 			$$a({
 				type:'get',//тип запроса: get,post либо head
 				url:'http://127.0.0.1/olvi/GETlocalPosition.php',//url адрес файла обработчика
@@ -52,46 +51,109 @@
 					alert(arr[num]);
 				},
 				success:function (data) {//возвращаемый результат от сервера
+					if(flag) {
 						reCord = JSON.parse(data);
 //						alert("Inner "+reCord);
+						getFly();
+					}
+					else {
+						reCord2 = JSON.parse(data);
+						//alert(reCord2.altitude);
+						chCoord();
+					}
 				}
 			});
 			}
-
+			
+			function timerSet() {
+				if(document.getElementById('ctrlReGetPosition').checked) {
+				getPosition(true);
+					refIntId = setInterval(function() {getPosition(true);},2000)
+				}
+				else {
+					clearInterval(refIntId);
+				}
+			}
+			
+			function gps() {
+			/*	if(document.getElementById('ctrlGPS').checked) {
+					getPosition(false);
+					refIntId2 = setInterval(function() {getPosition(false);},2000)
+				}
+				else {
+					clearInterval(refIntId);
+				}*/
+			}
+			
+			function chCoord() {
+				alert("!!!!");
+				var lat = Number(reCord2.latitude)+0.0005;
+				var lng = Number(reCord2.latitude)+0.0001;
+				var alt = Number(reCord2.latitude)+10;
+				$$a({
+					type:'post',//тип запроса: get,post либо head
+					url:'http://127.0.0.1/olvi/POSTnewMarkerTrace.php',//url адрес файла обработчика
+					data:{'lat':lat,'lng':lng,'alt':alt},//параметры запроса
+					response:'text',//тип возвращаемого ответа text либо xml
+					success:function (data) {//возвращаемый результат от сервера
+						alert(data);
+					}
+				});
+			}
+			
+			var placemark;
+			var icon;
+			var style;
+			var point;
+			var lineStringPlacemark;
+			var lineString;
+			var lineStyle;
 			function getFly() {
 //					alert("getFly()"+reCord);
-
-					var placemark = ge.createPlacemark('');
-					placemark.setName(reCord.time);
+					if(!flCreP) {
+						placemark = ge.createPlacemark('');
+						icon = ge.createIcon('');
+						style = ge.createStyle(''); //создает новый стиль
+						point = ge.createPoint('');
+						
+						lineStringPlacemark = ge.createPlacemark('');
+						lineString = ge.createLineString('');
+						
+						
+						icon.setHref('http://127.0.0.1/olvi/plane.png');
+						style.getIconStyle().setIcon(icon); //применяет значок к стилю
+						placemark.setStyleSelector(style); //применяет стиль к метке
+						
+						
+						
+						lineStringPlacemark.setGeometry(lineString);
+						lineString.setExtrude(true);
+						lineString.setAltitudeMode(ge.ALTITUDE_ABSOLUTE);
+						lineStringPlacemark.setStyleSelector(ge.createStyle(''));
+						lineStyle = lineStringPlacemark.getStyleSelector().getLineStyle();
+						lineStyle.setWidth(5);
+						lineStyle.getColor().set('9900ffff');  // формат aabbggrr
+						flCreP=1;
+					}
+					placemark.setName("Current altitude "+reCord.altitude+ " m");
 					
-					var icon = ge.createIcon('');
-					icon.setHref('http://127.0.0.1/olvi/plane.png');
-					var style = ge.createStyle(''); //создает новый стиль
-					style.getIconStyle().setIcon(icon); //применяет значок к стилю
-					placemark.setStyleSelector(style); //применяет стиль к метке
+					if(document.getElementById('ctrlTracking').checked) {
+						la.set(Number(reCord.latitude),Number(reCord.longitude), 0, ge.ALTITUDE_RELATIVE_TO_GROUND, 0, 70, (Number(reCord.altitude)*4));
+						ge.getView().setAbstractView(la);
+					}
 					
-					la.set(Number(reCord.latitude),Number(reCord.longitude), 0, ge.ALTITUDE_ABSOLUTE, /*-8.541*/0, 70, Number(reCord.altitude)+2000);
-					ge.getView().setAbstractView(la);
-					
-					var point = ge.createPoint('');
 					point.setLatitude(Number(reCord.latitude));
 					point.setLongitude(Number(reCord.longitude));
 					point.setAltitudeMode(ge.ALTITUDE_ABSOLUTE);
 					point.setAltitude(Number(reCord.altitude));
 					placemark.setGeometry(point);
 					ge.getFeatures().appendChild(placemark);
-					var lineStringPlacemark = ge.createPlacemark('');
-					var lineString = ge.createLineString('');
-					lineStringPlacemark.setGeometry(lineString);
-					lineString.setExtrude(true);
-					lineString.setAltitudeMode(ge.ALTITUDE_ABSOLUTE);
+
+					lineString.getCoordinates().clear();
 					lineString.getCoordinates().pushLatLngAlt(Number(reCord.latitude), Number(reCord.longitude), Number(reCord.altitude));
-//					lineString.getCoordinates().pushLatLngAlt(Number(reCord.latitude), Number(reCord.longitude), Number(reCord.altitude));
 					
-					lineStringPlacemark.setStyleSelector(ge.createStyle(''));
-					var lineStyle = lineStringPlacemark.getStyleSelector().getLineStyle();
-					lineStyle.setWidth(5);
-					lineStyle.getColor().set('9900ffff');  // формат aabbggrr
+					
+
 					ge.getFeatures().appendChild(lineStringPlacemark);
 //					clearInterval(refIntId);
 				
@@ -102,7 +164,10 @@
 	<body>
 		<div id="menu">
 			<section id="set_coordinates" style="height:3%">
-				<input type="button" onclick="example()" id='sCenter' value="Go" /> 
+				<input type="button" onclick="go()" id='sCenter' value="Go" /> 
+				&nbsp <input type="checkbox" onclick="timerSet()" id="ctrlReGetPosition" value="Load position">Observation
+				&nbsp <input type="checkbox" id="ctrlTracking" value="Load position">Tracking 
+				&nbsp <input type="checkbox" onclick="gps()" id="ctrlGPS" value="Load position">Test GPS data 
 			</section>
 		</div>
 		<div id="map3d" style="height: 100%; width: 100%;"></div>
