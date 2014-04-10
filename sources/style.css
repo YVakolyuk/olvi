@@ -1,0 +1,120 @@
+*{
+	vertical-align: baseline;
+	margin: 0px;
+	padding: 0px;
+//	border: 0;
+}
+div{
+	display: block;
+}
+h1{
+	font: bold 22px 'Verdana';
+}
+
+h2{
+	font: bold 20px 'Verdana';
+}
+h3{
+	font: bold 15px 'Verdana';
+}
+
+html{
+	height: 100%;
+}
+
+body{
+	height: 100%;
+	background-color: #CCCC99;
+	font-family: 'Verdana';
+}
+
+.hidden{
+	display:none;
+}
+
+#main_menu{
+	padding: 10px 15px 15px 15px;
+	margin: 0px;
+}
+
+#main_page{
+	padding: 10px 15px 15px 15px;
+	margin: 0px;
+}
+
+img{
+	margin: 10px;
+}
+
+#GoogleEarth{
+	height: 95%;
+}
+
+#ge_menu{
+//	height: 3%;
+	padding: 5px 15px 10px 15px;
+}
+
+#map3d {
+	height: 95%;
+}
+
+#GoogleMaps {
+	height: 95%;
+}
+
+#gm_menu{
+//	height: 3%;
+	padding: 5px 15px 10px 15px;
+}
+
+#map_canvas {
+	height: 95%;
+}
+
+#UnionPage {
+	height: 95%;
+}
+
+#up_gEarth {
+	border: 1px solid red;
+	height: 50%;
+	width: 100%;
+}
+
+#up_gMaps {
+	border: 1px solid red;
+	height: 50%;
+	width: 100%;
+}
+
+#up_right {
+	border: 1px solid red;
+	height: 95%;
+	width: 50%;
+	float:left;
+}
+
+#up_left {
+	border: 1px solid red;
+	height: 95%;
+	width: 49%;
+}
+
+#up_cameras {
+	border: 1px solid red;
+	height: 20%;
+	width: 100%;
+}
+
+#nav_data {
+	border: 1px solid red;
+	height: 25%;
+	width: 100%;
+}
+
+#up_controls {
+	border: 1px solid red;
+	height: 30%;
+	width: 100%;
+}
