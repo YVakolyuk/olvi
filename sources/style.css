@@ -74,47 +74,65 @@ img{
 
 #UnionPage {
 	height: 95%;
+	margin: 0px auto;
+	//text-float: center;
 }
 
 #up_gEarth {
-	border: 1px solid red;
+//	border: 1px solid red;
 	height: 50%;
 	width: 100%;
 }
 
 #up_gMaps {
-	border: 1px solid red;
+//	border: 1px solid red;
 	height: 50%;
 	width: 100%;
 }
 
 #up_right {
-	border: 1px solid red;
+//	border: 1px solid red;
+	margin: 0px 15px 10px 15px;
 	height: 95%;
-	width: 50%;
+	width: 46%;
 	float:left;
 }
 
 #up_left {
-	border: 1px solid red;
+//	border: 1px solid red;
+	margin: 0px 15px 10px 15px;
 	height: 95%;
 	width: 49%;
+	float: left;
 }
 
 #up_cameras {
-	border: 1px solid red;
-	height: 20%;
+//	border: 1px solid red;
+	height: 50%;
 	width: 100%;
 }
 
 #nav_data {
-	border: 1px solid red;
-	height: 25%;
+	border-top: 1px solid red;
+	padding: 10px 0px 5px 0px;
+	height: 20%;
 	width: 100%;
 }
 
 #up_controls {
-	border: 1px solid red;
+	border-top: 1px solid red;
+	padding: 10px 0px 5px 0px;
 	height: 30%;
 	width: 100%;
+}
+
+#controlBlock1, #controlBlock2, #controlBlock4, #controlBlock5, #navBlock1, #navBlock2 {
+	float: left;
+	padding: 10px 20px 10px 0px;
+}
+
+#controlBlock3 {
+	float: left;
+	padding: 10px 20px 10px 0px;
+	text-align: center;
 }

@@ -5,15 +5,19 @@
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
     <meta charset="utf-8">
     <style>
-      html, body, #map-canvas {
+      html, body {
         height: 100%;
         margin: 0px;
         padding: 0px
       }
+	  #map-canvas {
+		height: 50%;
+	  }
     </style>
     <script type="text/javascript" 
 		src="http://maps.googleapis.com/maps/api/js?key=AIzaSyDZkCGDCptY1ztDe8EyTV5Zn6mkpgrEMRQ&sensor=false">
-    <script>
+    </script>
+	<script>
 var map;
 function initialize() {
   var mapOptions = {
@@ -26,9 +30,18 @@ function initialize() {
 
 google.maps.event.addDomListener(window, 'load', initialize);
 
+function moveElem() {
+	var th=document.getElementById("but");
+	var el = document.getElementById('map-canvas');
+	if (th.nextSibling != el) {
+		th.parentNode.insertBefore(el, th.nextSibling);
+		el.style.width= "50%";
+	}
+}
     </script>
   </head>
   <body>
     <div id="map-canvas"></div>
+	<button id="but" onclick="moveElem()" value="down">
   </body>
 </html>
