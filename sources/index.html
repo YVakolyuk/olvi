@@ -33,7 +33,7 @@
 			google.load("earth", "1", {"other_params":"sensor=false"});
 
 			function googleEarthInitOnUP() {
-				google.earth.createInstance('up_gEarth', initCB, failureCB);
+				google.earth.createInstance('map3d', initCB, failureCB);
 			}
 
 			function initCB(instance) {
@@ -196,7 +196,7 @@
 					},
 					mapTypeId: google.maps.MapTypeId.HYBRID
 				};
-				map = new google.maps.Map(document.getElementById("up_gMaps"), mapOptions);      
+				map = new google.maps.Map(document.getElementById("mapG"), mapOptions);      
 				
 				locPoint = new google.maps.Marker({});
 				
@@ -213,9 +213,16 @@
 			//^^^^^^^^^^^^^^^^^^^^^^^^^^^It's all UNION PAGE^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 			
 			//-------------------------------PAGES BLOCK--------------------------------------------
+			function replaceDOM(what,where) {
+				var repl = document.getElementById(what);
+				var reference = document.getElementById(where);
+				if (reference.nextSibling != repl) {
+					reference.parentNode.insertBefore(repl, reference.nextSibling);
+				}
+			}
 			var maps_flag=0;//1-если страница гугл мепс уже загружалась в этой сессии, 0-если страницу гугл мепс не загружали
 			var earth_flag=0;//1-если страница гугл ерз уже загружалась в этой сессии, 0-если страницу гугл ерз не загружали
-			var up_flag=0;//аналогично предыдущему
+		//	var up_flag=0;//аналогично предыдущему
 			function showPage(numPage) {
 				//alert(numPage);
 				if(numPage==0) {
@@ -225,9 +232,11 @@
 					document.getElementById("GoogleMaps").style.display="none";
 					document.getElementById("UnionPage").style.display="none";
 					if(!earth_flag) {
-					//	googleEarthInitOnGePage();
+						googleEarthInitOnUP();
 						earth_flag=1;
 					}
+					replaceDOM("map3d", "map3d_ins_tag");
+					document.getElementById("map3d").style.height= '95%';
 				}
 				if(numPage==1) {
 					document.getElementById("db_settings").style.display="block";
@@ -250,9 +259,11 @@
 					document.getElementById("main_page").style.display="none";
 					document.getElementById("UnionPage").style.display="none";
 					if(!maps_flag) {
-					//	googleMapsInitOnGmPage();
+						googleMapsInitOnUP();
 						maps_flag=1;
 					}
+					replaceDOM("mapG", "map_ins_tag");
+					google.maps.event.trigger(map, 'resize');  
 				}
 				if(numPage==4) {
 					document.getElementById("UnionPage").style.display="block";
@@ -260,11 +271,17 @@
 					document.getElementById("db_settings").style.display="none";
 					document.getElementById("GoogleEarth").style.display="none";
 					document.getElementById("main_page").style.display="none";
-					if(!up_flag) {
+					if(!earth_flag) {
 						googleEarthInitOnUP();
-						googleMapsInitOnUP();
-						up_flag=1;
+						earth_flag=1;
 					}
+					if(!maps_flag) {
+						googleMapsInitOnUP();
+						maps_flag=1;
+					}
+					replaceDOM("map3d", "map3d_ins_tag_up");
+					replaceDOM("mapG", "map_ins_tag_up");
+					google.maps.event.trigger(map, 'resize');  
 				}
 			}
 			//^^^^^^^^^^^^^^^^^^^^^^^^^PAGES BLOCK^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -289,9 +306,9 @@
 				<!--<input type="button" onclick="go()" id='sCenter' value="Go" /> кнопка одиночного запуска слежения, без таймера
 				&nbsp <input type="checkbox" onclick="timerSet()" id="ctrlReGetPosition" value="Load position">Observation
 				&nbsp <input type="checkbox" id="ctrlTracking" value="Load position">Tracking 
-				&nbsp <input type="checkbox" onclick="gps()" id="ctrlGPS" value="Load position">Test GPS data -->
+				&nbsp <input type="checkbox" onclick="gps()" id="ctrlGPS" value="Load position">Test GPS data-->
 			</div>
-			<div id="map3d"></div>
+			<div id="map3d_ins_tag"></div>
 		</section>
 		<section id="db_settings" class="hidden">
 			Change DB connection settings</br>
@@ -307,16 +324,18 @@
 				&nbsp <input type="checkbox" id="ctrlReGetPosition" value="Load position">Load position 
 				&nbsp <input type="button" id="ctrlClear" value="Clear map" onclick="reInitialize()">-->
 			</div>
-			<div id="map_canvas"></div>
+			<div id="map_ins_tag"></div>
 		</section>
 		<section id="UnionPage" class="hidden">
 			<!---->
 			<div id="up_right">
-				<div id="up_gEarth">
-					<!--<div id="map3d"></div>-->
+				<div id="up_gEarth"><!-- It's gEarth paste block -->
+					<div id="map3d_ins_tag_up"></div>
+					<div id="map3d"></div>
 				</div>
-				<div id="up_gMaps">
-					<!--<div id="map_canvas"></div>-->
+				<div id="up_gMaps"><!-- It's gMaps paste block -->
+					<div id="map_ins_tag_up"></div>
+					<div id="mapG"></div>
 				</div>
 			</div>
 			<div id="up_left">

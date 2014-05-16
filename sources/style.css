@@ -82,12 +82,14 @@ img{
 //	border: 1px solid red;
 	height: 50%;
 	width: 100%;
+	margin: 5px;
 }
 
 #up_gMaps {
 //	border: 1px solid red;
 	height: 50%;
 	width: 100%;
+	margin: 5px;
 }
 
 #up_right {
@@ -104,6 +106,11 @@ img{
 	height: 95%;
 	width: 49%;
 	float: left;
+}
+
+#mapG {
+	height: 100%;
+	width: 100%;
 }
 
 #up_cameras {
