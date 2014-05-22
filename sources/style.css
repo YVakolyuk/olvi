@@ -143,3 +143,57 @@ img{
 	padding: 10px 20px 10px 0px;
 	text-align: center;
 }
+
+
+
+
+
+
+.login{
+	top: 50%;
+	left:50%;
+	position: fixed;
+	height: 350px;
+	width: 300px;
+	margin-top: -175px;
+	margin-left: -150px;
+}
+.login h2 {
+	color: #5465aa;	
+}
+.login input {
+	margin-bottom: 10px;
+}
+.submit{
+	background-color:#5465aa;
+	border-radius:6px; 
+	-webkit-border-radius:6px; 
+	-moz-border-radius:5px; 
+	-khtml-border-radius:10px;
+	border: 0;
+	color:#FFF;
+	width: 300px;
+	height: 25px;
+	font-size: 16px;
+	margin: 2px;
+}
+.error{
+	top: 50%;
+	left:50%;
+	position: fixed;
+	height: 350px;
+	width: 300px;
+	margin-top: -10px;
+	margin-left: -150px;
+
+	width: 300px;
+	height: 20px;
+	color: #c00;
+	background-color:#FCC;
+	border-radius:6px; 
+	-webkit-border-radius:6px; 
+	-moz-border-radius:5px; 
+	-khtml-border-radius:10px;
+	border: 1px solid #c00;
+	text-align:center;
+}

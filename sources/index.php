@@ -1,0 +1,416 @@
+<?php 
+	session_start();
+?>
+<html>
+	<head>
+	<meta charset="UTF-8" />
+		<title>O.L.Vi.</title>
+		<link rel="stylesheet" href="style.css" type="text/css" />
+		<script type="text/javascript"
+			src="http://maps.googleapis.com/maps/api/js?key=AIzaSyDZkCGDCptY1ztDe8EyTV5Zn6mkpgrEMRQ&sensor=true">
+		</script>
+		<script type="text/javascript" src="https://www.google.com/jsapi"> </script>
+		<script type="text/javascript" src="http://scriptjava.net/source/scriptjava/scriptjava.js"></script>
+		<script type="text/javascript">
+		//------------------------------------------It's all GOOGLE EARTH-------------------------------------------
+			var ge;//main GoogleEarth variable
+			var la;//main GoogleEarth look at variable
+			var reCord;
+			var refIntId;//идентификатор таймера
+			var flCreP=0;//флаг создания placemark метки на GoogleEarth. 0-не создавался ранее в этой сессии, 1-создавался
+
+			//It's Google Earth observer variables
+			var placemark;
+			var icon;
+			var style;
+			var point;
+			var lineStringPlacemark;
+			
+			var lineString;
+			var lineStyle;
+			//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+			google.load("earth", "1", {"other_params":"sensor=false"});
+
+			function googleEarthInitOnUP() {
+				google.earth.createInstance('map3d', initCB, failureCB);
+			}
+
+			function initCB(instance) {
+				ge = instance;
+				ge.getWindow().setVisibility(true);
+				ge.getLayerRoot().enableLayerById(ge.LAYER_BORDERS, true);
+	  			ge.getNavigationControl().setVisibility(ge.VISIBILITY_AUTO);
+				la = ge.createLookAt('');
+
+				function mousePosition(event) {
+					var currentLat=event.getLatitude();
+					var currentLng=event.getLongitude();
+					var currentAlt=event.getAltitude();
+					document.getElementById("nav_mousePos").innerHTML = "Latitude: " + currentLat + "</br>Longitute: " + currentLng +
+																											"</br>Altitude: " + currentAlt;
+				}
+				google.earth.addEventListener(ge.getGlobe(), 'mousemove', mousePosition);
+			}
+
+			function failureCB(errorCode) {
+			}
+			
+			function getPosition(flag) {
+			$$a({
+				type:'get',//тип запроса: get,post либо head
+				url:'http://127.0.0.1/olvi/GETlocalPosition.php',//url адрес файла обработчика
+				response:'text',//тип возвращаемого ответа text либо xml
+				error:function(num){
+					var arr=['Your browser does not support Ajax',
+                        'Request failed',
+                        'Address does not exist',
+                        'The waiting time left'];
+					alert(arr[num]);
+				},
+				success:function (data) {//возвращаемый результат от сервера
+					if(flag) {
+						reCord = JSON.parse(data);
+//						alert("Inner "+reCord);
+						getFly();
+					}
+				}
+			});
+			}
+			
+			var timerSet_flag=0;//флаг установки таймера 0-не установлен, 1-установлен
+			function observingTimerSet(th) { //функция мост между двумя чекбоксами, устанавливает связь если отмечен один из чекбоксов, отмечается и другой
+																												//кроме того в функции происходит щапуск таймера обновления или его остановка
+				var chkB1 = document.getElementById('ctrlReGetPosition');
+				var chkB2 = document.getElementById('ge_ctrlReGetPosition');
+				var chkB3 = document.getElementById('gm_ctrlReGetPosition');
+				if(th.checked&&!timerSet_flag) {
+					getPosition(true);
+					refIntId = setInterval(function() {getPosition(true);},2000);
+					timerSet_flag=1;
+					
+					chkB1.checked = true;
+					chkB2.checked = true;
+					chkB3.checked = true;
+				}
+				else {
+					timerSet_flag=0;
+					clearInterval(refIntId);
+					chkB1.checked = false;
+					chkB2.checked = false;
+					chkB3.checked = false;
+				}
+			}
+			
+			function setTrackingFlag(th) {  //функция мост между двумя чекбоксами, устанавливает связь если отмечен один из чекбоксов, отмечается и другой
+				var chkB1 = document.getElementById('ctrlTracking');
+				var chkB2 = document.getElementById('ge_ctrlTracking');
+				var chkB3 = document.getElementById('gm_ctrlTracking');
+				if(th.checked) {
+					chkB1.checked = true;
+					chkB2.checked = true;
+					chkB3.checked = true;
+				}
+				else
+				{
+					chkB1.checked = false;
+					chkB2.checked = false;
+					chkB3.checked = false;
+				}
+			}
+			
+			var flightPlanCoordinates=[];
+			var flightPath;
+			function getFly() {
+					//alert("getFly()"+reCord);
+					var image = 'http://127.0.0.1/olvi/plane.png';
+					var pos = new google.maps.LatLng(Number(reCord.latitude), Number(reCord.longitude));
+					if(!flCreP) {
+						placemark = ge.createPlacemark('');
+						icon = ge.createIcon('');
+						style = ge.createStyle(''); //создает новый стиль
+						point = ge.createPoint('');
+						
+						lineStringPlacemark = ge.createPlacemark('');
+						lineString = ge.createLineString('');
+						
+						
+						icon.setHref(image);
+						style.getIconStyle().setIcon(icon); //применяет значок к стилю
+						placemark.setStyleSelector(style); //применяет стиль к метке
+						
+						lineStringPlacemark.setGeometry(lineString);
+						lineString.setExtrude(true);
+						lineString.setAltitudeMode(ge.ALTITUDE_ABSOLUTE);
+						lineStringPlacemark.setStyleSelector(ge.createStyle(''));
+						lineStyle = lineStringPlacemark.getStyleSelector().getLineStyle();
+						lineStyle.setWidth(5);
+						lineStyle.getColor().set('9900ffff');  // формат aabbggrr
+						flCreP=1;
+					}
+					placemark.setName("Current altitude "+reCord.altitude+ " m");
+					
+					if(document.getElementById('ctrlTracking').checked) {
+						la.set(Number(reCord.latitude),Number(reCord.longitude), 0, ge.ALTITUDE_RELATIVE_TO_GROUND, 0, 70, (Number(reCord.altitude)*4));
+						ge.getView().setAbstractView(la);
+						map.setCenter(pos);
+					}
+					
+					point.setLatitude(Number(reCord.latitude));
+					point.setLongitude(Number(reCord.longitude));
+					point.setAltitudeMode(ge.ALTITUDE_ABSOLUTE);
+					point.setAltitude(Number(reCord.altitude));
+					placemark.setGeometry(point);
+					ge.getFeatures().appendChild(placemark);
+
+					lineString.getCoordinates().clear();
+					lineString.getCoordinates().pushLatLngAlt(Number(reCord.latitude), Number(reCord.longitude), Number(reCord.altitude));
+
+					ge.getFeatures().appendChild(lineStringPlacemark);
+					
+					
+					locPoint.setMap(map);
+					locPoint.setPosition(pos);
+					locPoint.setIcon(image);
+					
+					if(document.getElementById('gm_ctrlDrawTrack').checked) {
+						flightPlanCoordinates.push(pos);
+						flightPath.setPath(flightPlanCoordinates);
+					//	flightPath.setOptions(polylineOptions);
+						flightPath.setMap(map);
+					}
+					
+					document.getElementById("nav_curPos").innerHTML = "Latitude: " + reCord.latitude + "</br>Longitute: " + reCord.longitude +
+																											"</br>Altitude: " + reCord.altitude;
+			}
+			//^^^^^^^^^^^^^^^^^^^^^^^^^It's all GOOGLE EARTH^^^^^^^^^^^^^^^^^^^^^^^^^^
+			
+			//--------------------------------It's all GOOGLE MAPS---------------------------------
+			var locPoint;
+			var polylineOptions = {
+				strokeColor: '#0000FF',
+				strokeWeight: 2
+			};
+			var map;
+			function googleMapsInitOnUP() {
+			
+				var mapOptions = {
+					center: new google.maps.LatLng(49.999, 36.250),
+					zoom: 17,
+					scaleControl: true,
+					zoomControlOptions: {
+						style: google.maps.ZoomControlStyle.DEFAULT
+					},
+					mapTypeId: google.maps.MapTypeId.HYBRID
+				};
+				map = new google.maps.Map(document.getElementById("mapG"), mapOptions);      
+				
+				locPoint = new google.maps.Marker({});
+				flightPath = new google.maps.Polyline(polylineOptions);
+				
+				google.maps.event.addDomListener(window, 'load', googleMapsInitOnUP);
+			}
+
+			//^^^^^^^^^^^^^^^^^^^^^^^^^^It's all GOOGLE MAPS^^^^^^^^^^^^^^^^^^^^^^^^^^
+			
+			//---------------------------------It's all UNION PAGE------------------------------------
+			function camera_load() { //функция включения камеры
+				if(document.getElementById("cameraOnOff").checked==true) 
+					document.getElementById("camera1").style.display="block";
+				else
+					document.getElementById("camera1").style.display="none";
+			}
+			
+			//^^^^^^^^^^^^^^^^^^^^^^^^^^^It's all UNION PAGE^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+			
+			//-------------------------------PAGES BLOCK--------------------------------------------
+			function initialize() { //начальная инициализация мепс и ерс
+				googleEarthInitOnUP();
+				googleMapsInitOnUP();
+			}
+			
+			function replaceDOM(what,where) { //функция перемещения DOM элементов, в часности div maps&earth по страницам
+				var repl = document.getElementById(what);
+				var reference = document.getElementById(where);
+				if (reference.nextSibling != repl) {
+					reference.parentNode.insertBefore(repl, reference.nextSibling);
+				}
+			}
+
+			function showPage(numPage) {
+				if(numPage==0) {
+				//	document.getElementById("main_page").style.display="none";
+					document.getElementById("db_settings").style.display="none";
+					document.getElementById("GoogleEarth").style.display="block";
+					document.getElementById("GoogleMaps").style.display="none";
+					document.getElementById("UnionPage").style.display="none";
+					
+					replaceDOM("map3d", "map3d_ins_tag");
+					document.getElementById("map3d").style.height= '95%';
+				}
+				if(numPage==1) {
+					document.getElementById("db_settings").style.display="block";
+				//	document.getElementById("main_page").style.display="none";
+					document.getElementById("GoogleEarth").style.display="none";
+					document.getElementById("GoogleMaps").style.display="none";
+					document.getElementById("UnionPage").style.display="none";
+				}
+				if(numPage==2) {
+					document.getElementById("db_settings").style.display="none";
+					document.getElementById("GoogleEarth").style.display="none";
+					document.getElementById("main_page").style.display="block";
+					document.getElementById("GoogleMaps").style.display="none";
+					document.getElementById("UnionPage").style.display="none";
+				}
+				if(numPage==3) {
+					document.getElementById("GoogleMaps").style.display="block";
+					document.getElementById("db_settings").style.display="none";
+					document.getElementById("GoogleEarth").style.display="none";
+				//	document.getElementById("main_page").style.display="none";
+					document.getElementById("UnionPage").style.display="none";
+
+					replaceDOM("mapG", "map_ins_tag");
+					document.getElementById("mapG").style.height= '95%';
+					google.maps.event.trigger(map, 'resize');  
+				}
+				if(numPage==4) {
+					document.getElementById("UnionPage").style.display="block";
+					document.getElementById("GoogleMaps").style.display="none";
+					document.getElementById("db_settings").style.display="none";
+					document.getElementById("GoogleEarth").style.display="none";
+				//	document.getElementById("main_page").style.display="none";
+
+					replaceDOM("map3d", "map3d_ins_tag_up");
+					replaceDOM("mapG", "map_ins_tag_up");
+					google.maps.event.trigger(map, 'resize');  
+				}
+			}
+			//^^^^^^^^^^^^^^^^^^^^^^^^^PAGES BLOCK^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+		</script>
+
+	</head>
+	<body onload="initialize()">
+			<?php 
+				if(!isset($_SESSION['olvi'])) {
+			?>
+					<div class="login">
+						<h2>Authorization:</h2>
+						<form action="login.php" method="POST" >
+							<input name="login" type="text" placeholder=" | Enter your login" size="45" required /><br/>
+							<input name="password" type="password" placeholder=" | Enter your password" size="45" required />
+							<input class="submit" type="submit" value="Enter"/>
+						</form>
+					</div>
+					<?php
+					if (isset($_SESSION['log'])) {
+					?>
+						<div class="error">
+							<span>Wrong login or password</span>
+						</div>
+						
+					<?php } ?>
+				
+				
+			<?php } else {?>
+	
+		<section id="main_menu">
+			<p align=center><!--<input type="button" id="mm_mp" value="Main Page" onclick="showPage(2)">&nbsp-->
+									<input type="button" id="mm_ge" value="Google Earth" onclick="showPage(0)">&nbsp
+									<input type="button" id="mm_gm" value="Google Maps" onclick="showPage(3)">&nbsp
+									<!--<input type="button" id="mm_cp" value="Control Page" onclick="showPage(4)">&nbsp-->
+									<input type="button" id="mm_set" value="Database settings" onclick="showPage(1)">&nbsp
+									<input type="button" onclick="window.location='logout.php';" value="Logout"></p>
+		</section>
+		<!--<section id="main_page">
+			<p align=center>It's main page. You can choose one of menu buttons. And may the force be with you!</br>
+			<img src="http://imgs.steps.dragoart.com/how-to-draw-chibi-darth-vader-step-6_1_000000013000_5.jpg" width=200px></p>
+			
+		</section>-->
+		<section id="GoogleEarth">
+			<div id="ge_menu">
+				<!--<input type="button" onclick="go()" id='sCenter' value="Go" /> кнопка одиночного запуска слежения, без таймера-->
+				&nbsp <input type="checkbox" onclick="observingTimerSet(this)" id="ge_ctrlReGetPosition">Observation
+				&nbsp <input type="checkbox" onclick="setTrackingFlag(this)" id="ge_ctrlTracking">Tracking 
+				<!--&nbsp <input type="checkbox" onclick="gps()" id="ctrlGPS" value="Load position">Test GPS data-->
+			</div>
+			<div id="map3d_ins_tag"></div>
+			<div id="map3d"></div>
+		</section>
+		<section id="db_settings" class="hidden">
+			Change DB connection settings</br>
+			Set database host: <input type="text" id="DB_host"></br>
+			Set username: <input type="text" id="DB_user"></br>
+			Set password: <input type="password" id="DB_pass"></br>
+			Set database name: <input type="text" id="DB_name"></br>
+			<input type="button" id="DB_submit" value="Set">
+		</section>
+		<section id="GoogleMaps" class="hidden">
+			<div id="gm_menu">
+				&nbsp <input type="checkbox" onclick="observingTimerSet(this)" id="gm_ctrlReGetPosition">Observation
+				&nbsp <input type="checkbox" onclick="setTrackingFlag(this)" id="gm_ctrlTracking">Tracking
+				&nbsp | &nbsp
+				&nbsp <input type="button" id="gm_ctrlCreate" value="Create a path"> 
+				&nbsp <input type="checkbox" id="gm_ctrlDrawTrack">Draw track 
+				&nbsp <input type="button" id="gm_ctrlClear" value="Clear map" onclick="reInitialize()">
+			</div>
+			<div id="map_ins_tag"></div>
+		</section>
+		<section id="UnionPage" class="hidden">
+			<!---->
+			<div id="up_right">
+				<div id="up_gEarth"><!-- It's gEarth paste block -->
+					<div id="map3d_ins_tag_up"></div>
+					
+				</div>
+				<div id="up_gMaps"><!-- It's gMaps paste block -->
+					<div id="map_ins_tag_up"></div>
+					<div id="mapG"></div>
+				</div>
+			</div>
+			<div id="up_left">
+				<div id="up_cameras">
+					<h3>Cameras</h3>
+					<img id="camera1" class="hidden" src="IMG_1934.jpg" height=85%>
+				</div>
+				<div id="nav_data">
+					<h3>Navigation</h3>
+					<div id="navBlock1">
+						<p>Current position</p>
+						<p id="nav_curPos">Latitude:</br>
+						Longitude:</br>
+						Altitude:</p>
+					</div>
+					<div id="navBlock2">
+						<p>Mouse position</p>
+						<p id="nav_mousePos">Latitude:</br>
+						Longitude:</p>
+					</div>
+				</div>
+				<div id="up_controls">
+					<h3>Control panel</h3>
+					<div id="controlBlock1">
+						<input type="checkbox" onclick="observingTimerSet(this)" id="ctrlReGetPosition">Observation</br>
+						<input type="checkbox" onclick="setTrackingFlag(this)" id="ctrlTracking">Tracking 
+					</div>
+					<div id="controlBlock2">
+						<input type="checkbox" onclick="camera_load()" id="cameraOnOff">Camera</br>
+						<input type="checkbox" id="onBoardGPS">OnBoard GPS
+					</div>
+					<div id="controlBlock3">
+						<input type="button" value="Up"></br>
+						<input type="button" value="Left"><input type="button" value="Right"></br>
+						<input type="button" value="Down">
+					</div>
+					<div id="controlBlock4">
+						<input type="button" value="^"></br>
+						<input type="button" value="v">
+					</div>
+					<div id="controlBlock5">
+						<input type="button" value="Get">
+					</div>
+				</div>
+			</div>
+		<!--	-->
+		</section>
+		<?php } ?>
+	</body>
+</html>
