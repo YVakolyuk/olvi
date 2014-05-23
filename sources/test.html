@@ -2,20 +2,12 @@
 <head>
 <title>My Test Page</title>
 <script type="text/javascript">
-function moveElemOne() {
-	var th = document.getElementById('one');
-	var el = document.getElementById('elem');
-	if (th.nextSibling != el) {
-		th.parentNode.insertBefore(el, th.nextSibling);
+	function test() {
+		var a = [];
+		for(var i=0;i<4;i++)
+			a[i]=i;
+		alert(a[0]+" "+a[1]+" "+a[2]);
 	}
-}
-function moveElemTwo() {
-	var th = document.getElementById('two');
-	var el = document.getElementById('elem');
-	if (th.nextSibling != el) {
-		th.parentNode.insertBefore(el, th.nextSibling);
-	}
-}
 </script>
 </head>
 <body>
@@ -25,7 +17,7 @@ function moveElemTwo() {
 <!--<div onclick="moveElem(this);">press 3</div>
 <div onclick="moveElem(this);">press 4</div>-->
 <div id="elem">text</div>
-<input type="button" id="mm_mp" value="One" onclick="moveElemOne()">
+<input type="button" id="mm_mp" value="One" onclick="test()">
 <input type="button" id="mm_mp" value="Two" onclick="moveElemTwo()">
 </body>
 </html>

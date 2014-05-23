@@ -13,9 +13,11 @@ h1{
 
 h2{
 	font: bold 20px 'Verdana';
+	color: #007bed;
 }
 h3{
 	font: bold 15px 'Verdana';
+	color: #007bed;
 }
 
 html{
@@ -144,10 +146,92 @@ img{
 	text-align: center;
 }
 
+#settings {
+	width: 1100px;
+	height: 300px;
+	left: 50%;
+	top: 40%;
+	margin-top: -150px;
+	margin-left: -550px;
+	position: fixed;
+//	margin: 5px auto 5px;
+}
+
+#set_obj_area {
+	margin: 0px 15px 10px 15px;
+//	height: 95%;
+	width: 300px;
+	float: left;
+}
+
+#set_user_area {
+	margin: 0px 15px 10px 15px;
+//	height: 95%;
+	width: 300px;
+	float:left;
+}
+
+#change_pass_area {
+	margin: 0px 15px 10px 15px;
+//	height: 95%;
+	width: 300px;
+	float:left;
+}
+
+#settings input {
+	margin-bottom: 10px;
+}
+
+#settings h3 {
+	margin-bottom: 10px;
+}
+
+.set_error {
+	display: none;
+	width: 300px;
+//	height: 20px;
+	padding: 3px;
+	color: #c00;
+	background-color:#FCC;
+	border-radius:6px; 
+	-webkit-border-radius:6px; 
+	-moz-border-radius:5px; 
+	-khtml-border-radius:10px;
+	border: 1px solid #c00;
+	text-align:center;
+	font-size: 15px;
+}
+
+.set_confirm {
+	display: none;
+	width: 300px;
+//	height: 20px;
+	padding: 3px;
+	color: #007bed;
+	background-color:#adccea;
+	border-radius:6px; 
+	-webkit-border-radius:6px; 
+	-moz-border-radius:5px; 
+	-khtml-border-radius:10px;
+	border: 1px solid #007bed;
+	text-align:center;
+	font-size: 15px;
+}
 
 
-
-
+.button_all {
+	background-color:#007bed;
+	border-radius:6px; 
+	-webkit-border-radius:6px; 
+	-moz-border-radius:5px; 
+	-khtml-border-radius:10px;
+	border: 0;
+	color:#FFF;
+	width: 130px;
+	height: 20px;
+//	font-size: 16px;
+	margin: 2px;
+}
 
 .login{
 	top: 50%;
@@ -159,13 +243,13 @@ img{
 	margin-left: -150px;
 }
 .login h2 {
-	color: #5465aa;	
+//	color: #5465aa;	
 }
 .login input {
 	margin-bottom: 10px;
 }
 .submit{
-	background-color:#5465aa;
+	background-color:#007bed;
 	border-radius:6px; 
 	-webkit-border-radius:6px; 
 	-moz-border-radius:5px; 

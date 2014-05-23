@@ -1,27 +1,33 @@
 <?php 
 	require 'connection.php';
-	
-	if(isset($_POST['submit'])) {
 		$login = $_POST['login'];
+		$name = $_POST['userName'];
+		$password = $_POST['userPassword'];
+		$admin = $_POST['admLogin'];
+		$admPass = $_POST['admPass'];
 		$query=mysql_query("select count(*) as num_rows from users where user_login='$login'") or die(mysql_error());
 		$res=mysql_fetch_array($query);
 		if($res['num_rows'] == 0) {
-			$password = $_POST['password'];
-			$repassword = $_POST['repassword'];
-			if($password == $repassword) {
+			$query=mysql_query("select user_password from users where user_login='$admin'") or die(mysql_error());
+			$res=mysql_fetch_array($query);
+			if($res['user_password'] == md5($admPass)) {
 				$password = md5($password);
-				if(mysql_query("insert into users values(null, '$login', '$password')") or die(mysql_error()))
-					echo "Registration complete";
+				if(mysql_query("insert into users values(null, '$name', '$login', '$password')")) {
+					$obj = array('code' => 0, 'answ' => "User $name successfully registered.");
+					echo json_encode($obj);
+					//echo "User $name successfully registered.";
+				}
+				else {
+					$obj = array('code' => 1, 'answ' => "Something wrong!");
+					echo json_encode($obj);
+					//echo "Something wrong!";
+				}
 			}
-			else die("Password must much");
+			else die("Wrong admin password");
 		}
-		else die("This login already exists");
-	}
+		else {
+			$obj = array('code' => 1, 'answ' => "This login already exists.");
+			echo json_encode($obj);
+			//die("This login already exists");
+		}
 ?>
-
-<form method="post" action="registration.php">
-	<input type="text" name="login" placeholder=" | Enter your login" required /><br>
-	<input type="password" name="password" placeholder=" | Enter your password" required /><br>
-	<input type="password" name="repassword" placeholder=" | Retype password" required /><br>
-	<input type="submit" name="submit" value="Register" /><br>
-</form>

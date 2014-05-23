@@ -18,6 +18,7 @@
 			var reCord;
 			var refIntId;//идентификатор таймера
 			var flCreP=0;//флаг создания placemark метки на GoogleEarth. 0-не создавался ранее в этой сессии, 1-создавался
+			var objects_array;
 
 			//It's Google Earth observer variables
 			var placemark;
@@ -25,7 +26,6 @@
 			var style;
 			var point;
 			var lineStringPlacemark;
-			
 			var lineString;
 			var lineStyle;
 			//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -53,6 +53,32 @@
 			}
 
 			function failureCB(errorCode) {
+			}
+			var placemarks = []; //массив меток обьектов на глобусе
+			var local_point = []; //массив хранящий координаты для каждой из метки
+			function load_objects() {
+				$$a({
+					type:'get',//тип запроса: get,post либо head
+					url:'http://127.0.0.1/olvi/load_objects.php',//url адрес файла обработчика
+					response:'text',//тип возвращаемого ответа text либо xml
+					success:function (data) {//возвращаемый результат от сервера
+						objects_array = JSON.parse(data);
+						for(var i=0;i<objects_array.length;i++) {
+							placemarks[i] = ge.createPlacemark(''); //создаем метку
+							local_point[i] = ge.createPoint('');			//создаем координату
+							
+							local_point[i].setLatitude(Number(objects_array[i].lat)); //устанавливаем широту для координаты
+							local_point[i].setLongitude(Number(objects_array[i].lng)); //устанавливаем долготу для координаты
+							local_point[i].setAltitudeMode(ge.ALTITUDE_ABSOLUTE); //устанавливаем тип измерения высоты
+							local_point[i].setAltitude(Number(objects_array[i].alt)); //устанавливаем высоту для координаты
+							
+							placemarks[i].setName(objects_array[i].obj_name); //присваиваем метке имя
+							placemarks[i].setGeometry(local_point[i]); //устанавливаем координату для метки
+							
+							ge.getFeatures().appendChild(placemarks[i]); //выводим метку на глобус
+						}
+					}
+				});				
 			}
 			
 			function getPosition(flag) {
@@ -239,7 +265,7 @@
 			function showPage(numPage) {
 				if(numPage==0) {
 				//	document.getElementById("main_page").style.display="none";
-					document.getElementById("db_settings").style.display="none";
+					document.getElementById("settings").style.display="none";
 					document.getElementById("GoogleEarth").style.display="block";
 					document.getElementById("GoogleMaps").style.display="none";
 					document.getElementById("UnionPage").style.display="none";
@@ -248,14 +274,14 @@
 					document.getElementById("map3d").style.height= '95%';
 				}
 				if(numPage==1) {
-					document.getElementById("db_settings").style.display="block";
+					document.getElementById("settings").style.display="block";
 				//	document.getElementById("main_page").style.display="none";
 					document.getElementById("GoogleEarth").style.display="none";
 					document.getElementById("GoogleMaps").style.display="none";
 					document.getElementById("UnionPage").style.display="none";
 				}
 				if(numPage==2) {
-					document.getElementById("db_settings").style.display="none";
+					document.getElementById("settings").style.display="none";
 					document.getElementById("GoogleEarth").style.display="none";
 					document.getElementById("main_page").style.display="block";
 					document.getElementById("GoogleMaps").style.display="none";
@@ -263,7 +289,7 @@
 				}
 				if(numPage==3) {
 					document.getElementById("GoogleMaps").style.display="block";
-					document.getElementById("db_settings").style.display="none";
+					document.getElementById("settings").style.display="none";
 					document.getElementById("GoogleEarth").style.display="none";
 				//	document.getElementById("main_page").style.display="none";
 					document.getElementById("UnionPage").style.display="none";
@@ -275,7 +301,7 @@
 				if(numPage==4) {
 					document.getElementById("UnionPage").style.display="block";
 					document.getElementById("GoogleMaps").style.display="none";
-					document.getElementById("db_settings").style.display="none";
+					document.getElementById("settings").style.display="none";
 					document.getElementById("GoogleEarth").style.display="none";
 				//	document.getElementById("main_page").style.display="none";
 
@@ -285,6 +311,125 @@
 				}
 			}
 			//^^^^^^^^^^^^^^^^^^^^^^^^^PAGES BLOCK^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+			
+			
+			function addObject() {
+				var objName = document.getElementById("obj_name").value;
+				var confirm = document.getElementById("obj_add_confirm");
+				if(objName!="") {
+					$$a({
+						type:'post',//тип запроса: get,post либо head
+						url:'http://127.0.0.1/olvi/POSTnewObject.php',//url адрес файла обработчика
+						data:{'name':objName},//параметры запроса
+						response:'text',//тип возвращаемого ответа text либо xml
+						success:function (data) {//возвращаемый результат от сервера
+							confirm.innerHTML = "Object "+objName+" added with id "+data+".";
+							document.getElementById("obj_name").value=null;
+							confirm.className = "set_confirm";
+							confirm.style.display = "block";
+						}
+					});
+				}
+				else {
+					confirm.innerHTML = "Enter some name for object!";
+					confirm.className = "set_error";
+					confirm.style.display = "block";
+//					alert('<?php echo $_SESSION['olvi']; ?>');
+				}
+			}
+			
+			function addUser() {
+			 
+				var userLogin = document.getElementById("user_login").value;
+				var userName = document.getElementById("user_name").value;
+				var userPassword = document.getElementById("user_password").value;
+				var userRePassword = document.getElementById("user_repassword").value;
+				var admLogin = '<?php echo $_SESSION['olvi']; ?>';
+				var admPass = document.getElementById("admin_password").value;
+				var confirm = document.getElementById("user_add_confirm");
+				if(userLogin!="" && userName!="" && userPassword!="" && admPass!="") {
+					if(userPassword == userRePassword) {
+						$$a({
+							type:'post',//тип запроса: get,post либо head
+							url:'http://127.0.0.1/olvi/registration.php',//url адрес файла обработчика
+							data:{'login':userLogin, 'userName':userName, 'userPassword':userPassword, 'admLogin': admLogin, 'admPass':admPass },//параметры запроса
+							response:'text',//тип возвращаемого ответа text либо xml
+							success:function (data) {//возвращаемый результат от сервера
+								var answ = JSON.parse(data);
+								if(Number(answ.code)==0) {
+									confirm.innerHTML = answ.answ;
+									confirm.className = "set_confirm";
+									confirm.style.display = "block";
+									document.getElementById("user_login").value=null;
+									document.getElementById("user_name").value=null;
+									document.getElementById("user_password").value=null;
+									document.getElementById("user_repassword").value=null;
+									document.getElementById("admin_password").value=null;
+								}
+								else {
+									confirm.innerHTML = answ.answ;
+									confirm.className = "set_error";
+									confirm.style.display = "block";
+								}
+							}
+						});
+					}
+					else {
+						confirm.innerHTML = "Passwords must match!";
+						confirm.className = "set_error";
+						confirm.style.display = "block";
+					}
+				}
+				else {
+					confirm.innerHTML = "Some fields are empty!";
+					confirm.className = "set_error";
+					confirm.style.display = "block";
+				}
+			}
+			
+			function changePass() {
+				var admNewPass = document.getElementById("admin_new_password").value;
+				var admNewRePass = document.getElementById("admin_new_repassword").value;
+				var admLogin = '<?php echo $_SESSION['olvi']; ?>';
+				var admPass = document.getElementById("admin_current_password").value;
+				var confirm = document.getElementById("pass_change_confirm");
+				if(admNewPass!="" && admNewRePass!="" && admPass!="") {
+					if(admNewPass == admNewRePass) {
+						$$a({
+							type:'post',//тип запроса: get,post либо head
+							url:'http://127.0.0.1/olvi/POSTchPass.php',//url адрес файла обработчика
+							data:{'login':admLogin, 'password':admPass, 'newPassword':admNewPass},//параметры запроса
+							response:'text',//тип возвращаемого ответа text либо xml
+							success:function (data) {//возвращаемый результат от сервера
+								var answ = JSON.parse(data);
+									if(Number(answ.code)==0) {
+									confirm.innerHTML = answ.answ;
+									confirm.className = "set_confirm";
+									confirm.style.display = "block";
+									document.getElementById("admin_new_password").value=null;
+									document.getElementById("admin_new_repassword").value=null;
+									document.getElementById("admin_current_password").value=null;
+								}
+								else {
+									confirm.innerHTML = answ.answ;
+									confirm.className = "set_error";
+									confirm.style.display = "block";
+								}
+							}
+						});
+					}
+					else {
+						confirm.innerHTML = "Passwords must match!";
+						confirm.className = "set_error";
+						confirm.style.display = "block";
+					}
+				}
+				else {
+					confirm.innerHTML = "Some fields are empty!";
+					confirm.className = "set_error";
+					confirm.style.display = "block";
+				}
+			}
 		</script>
 
 	</head>
@@ -314,11 +459,11 @@
 	
 		<section id="main_menu">
 			<p align=center><!--<input type="button" id="mm_mp" value="Main Page" onclick="showPage(2)">&nbsp-->
-									<input type="button" id="mm_ge" value="Google Earth" onclick="showPage(0)">&nbsp
-									<input type="button" id="mm_gm" value="Google Maps" onclick="showPage(3)">&nbsp
+									<input class="button_all" type="button" id="mm_ge" value="Google Earth" onclick="showPage(0)">&nbsp
+									<input class="button_all" type="button" id="mm_gm" value="Google Maps" onclick="showPage(3)">&nbsp
 									<!--<input type="button" id="mm_cp" value="Control Page" onclick="showPage(4)">&nbsp-->
-									<input type="button" id="mm_set" value="Database settings" onclick="showPage(1)">&nbsp
-									<input type="button" onclick="window.location='logout.php';" value="Logout"></p>
+									<input class="button_all" type="button" id="mm_set" value="Settings" onclick="showPage(1)">&nbsp
+									<input class="button_all" type="button" value="Logout" onclick="window.location='logout.php';"></p>
 		</section>
 		<!--<section id="main_page">
 			<p align=center>It's main page. You can choose one of menu buttons. And may the force be with you!</br>
@@ -327,7 +472,7 @@
 		</section>-->
 		<section id="GoogleEarth">
 			<div id="ge_menu">
-				<!--<input type="button" onclick="go()" id='sCenter' value="Go" /> кнопка одиночного запуска слежения, без таймера-->
+				<input type="button" onclick="load_objects()" id='sCenter' value="Go" /> <!--кнопка одиночного запуска слежения, без таймера-->
 				&nbsp <input type="checkbox" onclick="observingTimerSet(this)" id="ge_ctrlReGetPosition">Observation
 				&nbsp <input type="checkbox" onclick="setTrackingFlag(this)" id="ge_ctrlTracking">Tracking 
 				<!--&nbsp <input type="checkbox" onclick="gps()" id="ctrlGPS" value="Load position">Test GPS data-->
@@ -335,14 +480,34 @@
 			<div id="map3d_ins_tag"></div>
 			<div id="map3d"></div>
 		</section>
-		<section id="db_settings" class="hidden">
-			Change DB connection settings</br>
-			Set database host: <input type="text" id="DB_host"></br>
-			Set username: <input type="text" id="DB_user"></br>
-			Set password: <input type="password" id="DB_pass"></br>
-			Set database name: <input type="text" id="DB_name"></br>
-			<input type="button" id="DB_submit" value="Set">
+		
+		<section id="settings" class="hidden">
+			<div id="set_obj_area">
+				<h3>Add new object</h3>
+				<input type="text" id="obj_name" placeholder=" | Enter object name" size="45" /><br>
+				<p align=center><input class="button_all" type="button" id="obj_add" value="Add" onclick="addObject()" /></p>
+				<div class="set_error" id="obj_add_confirm"></div>
+			</div>
+			<div id="set_user_area">
+				<h3>Add new operator</h3>
+					<input type="text" id="user_login" placeholder=" | Enter login" size="45" /><br>
+					<input type="text" id="user_name" placeholder=" | Enter name" size="45" /><br>
+					<input type="password" id="user_password" placeholder=" | Enter password" size="45" /><br>
+					<input type="password" id="user_repassword" placeholder=" | Retype password" size="45" /><br>
+					<input type="password" id="admin_password" placeholder=" | Enter current password" size="45" /><br>
+					<p align=center><input class="button_all" type="button" id="user_register" value="Register" onclick="addUser()"/></p>
+				<div class="set_error" id="user_add_confirm"></div>
+			</div>
+			<div id="change_pass_area">
+				<h3>Change your password</h3>
+					<input type="password" id="admin_new_password" placeholder=" | Enter password" size="45" /><br>
+					<input type="password" id="admin_new_repassword" placeholder=" | Retype password" size="45" /><br>
+					<input type="password" id="admin_current_password" placeholder=" | Enter current password" size="45" /><br>
+					<p align=center><input class="button_all" type="button" id="change_password" value="Change password" onclick="changePass()" /></p>
+				<div class="set_error" id="pass_change_confirm"></div>
+			</div>
 		</section>
+		
 		<section id="GoogleMaps" class="hidden">
 			<div id="gm_menu">
 				&nbsp <input type="checkbox" onclick="observingTimerSet(this)" id="gm_ctrlReGetPosition">Observation
@@ -354,6 +519,7 @@
 			</div>
 			<div id="map_ins_tag"></div>
 		</section>
+		
 		<section id="UnionPage" class="hidden">
 			<!---->
 			<div id="up_right">
