@@ -18,7 +18,7 @@
 			var reCord;
 			var refIntId;//идентификатор таймера
 			var flCreP=0;//флаг создания placemark метки на GoogleEarth. 0-не создавался ранее в этой сессии, 1-создавался
-			var objects_array;
+//			var objects_array =[];
 
 			//It's Google Earth observer variables
 			var placemark;
@@ -28,20 +28,31 @@
 			var lineStringPlacemark;
 			var lineString;
 			var lineStyle;
+			var image = 'http://127.0.0.1/olvi/plane.png';
 			//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 			google.load("earth", "1", {"other_params":"sensor=false"});
 
 			function googleEarthInitOnUP() {
 				google.earth.createInstance('map3d', initCB, failureCB);
 			}
-
+			
+			var loadingObjectsTimer; //идентификатор таймера загрузки всех объектов
 			function initCB(instance) {
 				ge = instance;
 				ge.getWindow().setVisibility(true);
 				ge.getLayerRoot().enableLayerById(ge.LAYER_BORDERS, true);
 	  			ge.getNavigationControl().setVisibility(ge.VISIBILITY_AUTO);
+				ge.getNavigationControl().getScreenXY().setXUnits(ge.UNITS_PIXELS);
+				ge.getNavigationControl().getScreenXY().setYUnits(ge.UNITS_INSET_PIXELS);
+						
+				load_objects();
+				loadingObjectsTimer = setInterval(function() {load_objects();},2000);
+				
+				ge.getOptions().setFlyToSpeed(0.2);
 				la = ge.createLookAt('');
-
+				la.set(Number(49.979),Number(36.270), 0, ge.ALTITUDE_RELATIVE_TO_GROUND, 0, 65, 8000);
+				ge.getView().setAbstractView(la);
+				goToControl(28);
 				function mousePosition(event) {
 					var currentLat=event.getLatitude();
 					var currentLng=event.getLongitude();
@@ -50,35 +61,160 @@
 																											"</br>Altitude: " + currentAlt;
 				}
 				google.earth.addEventListener(ge.getGlobe(), 'mousemove', mousePosition);
+				
 			}
 
 			function failureCB(errorCode) {
 			}
 			var placemarks = []; //массив меток обьектов на глобусе
 			var local_point = []; //массив хранящий координаты для каждой из метки
+			var local_icon;
+			var local_style;
+			var local_lineStringPlacemark = [];
+			var local_lineString = [];
+			var local_lineStyle = [];
+			var local_creationFlag=0;
+			var local_content = [];
+			var local_balloon = [];
+			var local_event = [];
+			var local_sample;
+			var objects_array = [];
 			function load_objects() {
 				$$a({
 					type:'get',//тип запроса: get,post либо head
-					url:'http://127.0.0.1/olvi/load_objects.php',//url адрес файла обработчика
+					url:"http://127.0.0.1/olvi/load_objects.php", 
+					data: {p: "load"},//url адрес файла обработчика
 					response:'text',//тип возвращаемого ответа text либо xml
+					error:function(num){
+					var arr=['Your browser does not support Ajax',
+                        'Request failed',
+                        'Address does not exist',
+                        'The waiting time left'];
+					alert(arr[num]);
+					},
 					success:function (data) {//возвращаемый результат от сервера
+						var objList = document.getElementById("obj_list");
+						var countOn = 0;
+						var countOff = 0;
 						objects_array = JSON.parse(data);
+						local_icon = ge.createIcon('');
+						local_style = ge.createStyle(''); //создает новый стиль
+						local_icon.setHref(image);
+						local_style.getIconStyle().setIcon(local_icon); //применяет значок к стилю
+						//alert(data);
+					//	alert("get "+local_statusON_counter);
+						if(local_sample>objects_array.length && local_creationFlag) {
+							for(var i=0;i<local_sample;i++) {
+								ge.getFeatures().removeChild(placemarks[i]);
+								ge.getFeatures().removeChild(local_lineStringPlacemark[i]);
+							//	alert('remove '+placemarks[i].getName());
+							}
+						} 						
+						objList.innerHTML = "";
 						for(var i=0;i<objects_array.length;i++) {
-							placemarks[i] = ge.createPlacemark(''); //создаем метку
-							local_point[i] = ge.createPoint('');			//создаем координату
-							
-							local_point[i].setLatitude(Number(objects_array[i].lat)); //устанавливаем широту для координаты
-							local_point[i].setLongitude(Number(objects_array[i].lng)); //устанавливаем долготу для координаты
-							local_point[i].setAltitudeMode(ge.ALTITUDE_ABSOLUTE); //устанавливаем тип измерения высоты
-							local_point[i].setAltitude(Number(objects_array[i].alt)); //устанавливаем высоту для координаты
-							
-							placemarks[i].setName(objects_array[i].obj_name); //присваиваем метке имя
-							placemarks[i].setGeometry(local_point[i]); //устанавливаем координату для метки
-							
-							ge.getFeatures().appendChild(placemarks[i]); //выводим метку на глобус
+						//alert("Step "+i);
+							if(objects_array[i].status!="off") {
+								countOn++;
+								objList.innerHTML = objList.innerHTML+"<li><a href='#' onclick='goToControl("+objects_array[i].id_object+");return false;'>"+
+																															"<img src='http://127.0.0.1/olvi/plane_on.png' height='20px'>"+
+																																objects_array[i].obj_name+"</a></li>";
+								if(!placemarks[i] || !local_point[i] || !local_lineStringPlacemark[i] || !local_lineString[i]) {
+									placemarks[i] = ge.createPlacemark(''); //создаем метку
+									local_point[i] = ge.createPoint('');			//создаем координату
+									
+									local_lineStringPlacemark[i] = ge.createPlacemark(''); //создаем метку-линию
+									local_lineString[i] = ge.createLineString('');
+									if(i==objects_array.length-1)
+										local_creationFlag=1;
+								
+								
+									local_lineStringPlacemark[i].setGeometry(local_lineString[i]);
+									local_lineString[i].setExtrude(true);
+									local_lineString[i].setAltitudeMode(ge.ALTITUDE_ABSOLUTE);
+									local_lineStringPlacemark[i].setStyleSelector(ge.createStyle(''));
+									local_lineStyle[i] = local_lineStringPlacemark[i].getStyleSelector().getLineStyle();
+									local_lineStyle[i].setWidth(5);
+									local_lineStyle[i].getColor().set('9900ffff');  // формат aabbggrr
+								
+									placemarks[i].setStyleSelector(local_style); //применяет стиль к метке
+								//	alert("if not then create " + i+" "+objects_array[i].obj_name);
+								}
+								
+								
+								local_point[i].setLatitude(Number(objects_array[i].lat)); //устанавливаем широту для координаты
+								local_point[i].setLongitude(Number(objects_array[i].lng)); //устанавливаем долготу для координаты
+								local_point[i].setAltitudeMode(ge.ALTITUDE_ABSOLUTE); //устанавливаем тип измерения высоты
+								local_point[i].setAltitude(Number(objects_array[i].alt)); //устанавливаем высоту для координаты
+								
+								placemarks[i].setName(objects_array[i].obj_name); //присваиваем метке имя
+								placemarks[i].setGeometry(local_point[i]); //устанавливаем координату для метки
+								placemarks[i].setDescription(
+											'<div class="balloon"><h3><p align=center>'+objects_array[i].obj_name+'</p></h3>' +
+											'<b>Status:</b> '+objects_array[i].status+'<br>' +
+											'<b>Current position</b><br>' +
+											'Latitude: '+objects_array[i].lat+'<br>' +
+											'Longitude: '+objects_array[i].lng+'<br>' +
+											'Altitude: '+objects_array[i].alt+'<br>' +
+											'<p align=center><input class="button_all" type="button" id="newGo" value="Control panel" onclick="goToControl('+objects_array[i].id_object+')"></p></div>');
+								balloonsCraetor(placemarks[i]);
+								ge.getFeatures().appendChild(placemarks[i]); //выводим метку на глобус
+								
+								local_lineString[i].getCoordinates().clear();
+								local_lineString[i].getCoordinates().pushLatLngAlt(Number(objects_array[i].lat), Number(objects_array[i].lng), Number(objects_array[i].alt));
+
+								ge.getFeatures().appendChild(local_lineStringPlacemark[i]);
+								
+							}else {
+							objList.innerHTML = objList.innerHTML+"<li><a href='#' onclick='goToControl("+objects_array[i].id_object+");return false;'>"+
+																															"<img src='http://127.0.0.1/olvi/plane_off.png' height='20px'>"+
+																																objects_array[i].obj_name+"</a></li>";
+							countOff++;
+							}
 						}
+						local_sample=objects_array.length;
+						document.getElementById("footer").innerHTML = "Now enabled "+countOn+" objects. The other "+countOff+" are turned off and in standby mode.";
+						
+					//	alert(local_create_counter);
+					//	alert(findObject(28));
 					}
 				});				
+			}
+
+			function balloonsCraetor(placemark) {
+				google.earth.addEventListener(placemark, 'click', function(event) {
+				  // Запрещает открывать всплывающее окно по умолчанию.
+				  event.preventDefault();
+				  var content = placemark.getDescription();
+				  var balloon = ge.createHtmlStringBalloon('');
+				  balloon.setFeature(placemark);
+				  balloon.setContentString(content);
+				  ge.setBalloon(balloon);
+				});
+			}
+			
+			function findObject(id) { //функция производит поиск обьекта в массиве placemarks и возвращает его номер в массиве
+				for(var i=0;i<objects_array.length;i++) {
+					if(objects_array[i].id_object==id) {
+						return i;
+					}
+				}
+			}
+			
+			function goToControl(o_id) { //функция запускает переход на страницу Control panel для выбранного обьекта
+				$$a({
+					type:'get',//тип запроса: get,post либо head
+					url:'http://127.0.0.1/olvi/load_objects.php',//url адрес файла обработчика
+					data: {p: 'obj', id: o_id},
+					response:'text',//тип возвращаемого ответа text либо xml
+					success:function (data) {//возвращаемый результат от сервера
+				//	alert(data);
+						var object_details = JSON.parse(data);
+						document.getElementById("up_objNameId").innerHTML = "<h2>Control panel "+object_details.obj_name+"</h2>";
+						showPage(4);
+						
+					}
+				});
+				
 			}
 			
 			function getPosition(flag) {
@@ -148,7 +284,7 @@
 			var flightPath;
 			function getFly() {
 					//alert("getFly()"+reCord);
-					var image = 'http://127.0.0.1/olvi/plane.png';
+				//	var image = 'http://127.0.0.1/olvi/plane.png';
 					var pos = new google.maps.LatLng(Number(reCord.latitude), Number(reCord.longitude));
 					if(!flCreP) {
 						placemark = ge.createPlacemark('');
@@ -239,12 +375,12 @@
 			//^^^^^^^^^^^^^^^^^^^^^^^^^^It's all GOOGLE MAPS^^^^^^^^^^^^^^^^^^^^^^^^^^
 			
 			//---------------------------------It's all UNION PAGE------------------------------------
-			function camera_load() { //функция включения камеры
+		/*	function camera_load() { //функция включения камеры
 				if(document.getElementById("cameraOnOff").checked==true) 
 					document.getElementById("camera1").style.display="block";
 				else
 					document.getElementById("camera1").style.display="none";
-			}
+			}*/
 			
 			//^^^^^^^^^^^^^^^^^^^^^^^^^^^It's all UNION PAGE^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 			
@@ -264,46 +400,42 @@
 
 			function showPage(numPage) {
 				if(numPage==0) {
-				//	document.getElementById("main_page").style.display="none";
 					document.getElementById("settings").style.display="none";
 					document.getElementById("GoogleEarth").style.display="block";
 					document.getElementById("GoogleMaps").style.display="none";
 					document.getElementById("UnionPage").style.display="none";
 					
 					replaceDOM("map3d", "map3d_ins_tag");
-					document.getElementById("map3d").style.height= '95%';
+				//	document.getElementById("map3d").style.height= '95%';
 				}
 				if(numPage==1) {
 					document.getElementById("settings").style.display="block";
-				//	document.getElementById("main_page").style.display="none";
 					document.getElementById("GoogleEarth").style.display="none";
 					document.getElementById("GoogleMaps").style.display="none";
 					document.getElementById("UnionPage").style.display="none";
 				}
-				if(numPage==2) {
+				/*if(numPage==2) {
 					document.getElementById("settings").style.display="none";
 					document.getElementById("GoogleEarth").style.display="none";
 					document.getElementById("main_page").style.display="block";
 					document.getElementById("GoogleMaps").style.display="none";
 					document.getElementById("UnionPage").style.display="none";
-				}
-				if(numPage==3) {
+				}*/
+				if(numPage==3) { //show all objects control page
 					document.getElementById("GoogleMaps").style.display="block";
 					document.getElementById("settings").style.display="none";
 					document.getElementById("GoogleEarth").style.display="none";
-				//	document.getElementById("main_page").style.display="none";
 					document.getElementById("UnionPage").style.display="none";
 
 					replaceDOM("mapG", "map_ins_tag");
 					document.getElementById("mapG").style.height= '95%';
 					google.maps.event.trigger(map, 'resize');  
 				}
-				if(numPage==4) {
+				if(numPage==4) { //show control page
 					document.getElementById("UnionPage").style.display="block";
 					document.getElementById("GoogleMaps").style.display="none";
 					document.getElementById("settings").style.display="none";
 					document.getElementById("GoogleEarth").style.display="none";
-				//	document.getElementById("main_page").style.display="none";
 
 					replaceDOM("map3d", "map3d_ins_tag_up");
 					replaceDOM("mapG", "map_ins_tag_up");
@@ -430,6 +562,20 @@
 					confirm.style.display = "block";
 				}
 			}
+			
+			function mes() { alert("Wow"); }
+			
+			var eggg=0;
+			function egg() {
+				eggg++;
+				document.getElementById("camera1").src="camera.png";
+				if(eggg==5) {
+					eggg=0;
+					document.getElementById("camera1").src="http://www.asn-news.ru/uploads/news/photo/l/Eye_of_Sauron.jpeg";
+					setTimeout(egg, 2000);
+
+				}
+			}
 		</script>
 
 	</head>
@@ -458,8 +604,7 @@
 			<?php } else {?>
 	
 		<section id="main_menu">
-			<p align=center><!--<input type="button" id="mm_mp" value="Main Page" onclick="showPage(2)">&nbsp-->
-									<input class="button_all" type="button" id="mm_ge" value="Google Earth" onclick="showPage(0)">&nbsp
+			<p align=center><input class="button_all" type="button" id="mm_ge" value="Objects control" onclick="showPage(0)">&nbsp
 									<input class="button_all" type="button" id="mm_gm" value="Google Maps" onclick="showPage(3)">&nbsp
 									<!--<input type="button" id="mm_cp" value="Control Page" onclick="showPage(4)">&nbsp-->
 									<input class="button_all" type="button" id="mm_set" value="Settings" onclick="showPage(1)">&nbsp
@@ -471,40 +616,52 @@
 			
 		</section>-->
 		<section id="GoogleEarth">
-			<div id="ge_menu">
-				<input type="button" onclick="load_objects()" id='sCenter' value="Go" /> <!--кнопка одиночного запуска слежения, без таймера-->
-				&nbsp <input type="checkbox" onclick="observingTimerSet(this)" id="ge_ctrlReGetPosition">Observation
-				&nbsp <input type="checkbox" onclick="setTrackingFlag(this)" id="ge_ctrlTracking">Tracking 
-				<!--&nbsp <input type="checkbox" onclick="gps()" id="ctrlGPS" value="Load position">Test GPS data-->
+			<div id="ge_left">
+				<h2>List of objects</h2>
+				<ul id="obj_list">
+					<li>Loading...</li>
+				</ul>
 			</div>
-			<div id="map3d_ins_tag"></div>
-			<div id="map3d"></div>
+			<div id="ge_right">
+				<!--<div id="ge_menu">
+					<input type="button" onclick="load_objects()" id='sCenter' value="Go" /> кнопка одиночного запуска слежения, без таймера
+					<input type="button" onclick="removePl()" id='rCenter' value="remove" />
+					&nbsp <input type="checkbox" onclick="observingTimerSet(this)" id="ge_ctrlReGetPosition">Observation
+					&nbsp <input type="checkbox" onclick="setTrackingFlag(this)" id="ge_ctrlTracking">Tracking 
+					&nbsp <input type="checkbox" onclick="gps()" id="ctrlGPS" value="Load position">Test GPS data
+				</div>-->
+				<div id="map3d_ins_tag"></div>
+				<div id="map3d"></div>
+			</div>
 		</section>
 		
 		<section id="settings" class="hidden">
-			<div id="set_obj_area">
-				<h3>Add new object</h3>
-				<input type="text" id="obj_name" placeholder=" | Enter object name" size="45" /><br>
-				<p align=center><input class="button_all" type="button" id="obj_add" value="Add" onclick="addObject()" /></p>
-				<div class="set_error" id="obj_add_confirm"></div>
-			</div>
-			<div id="set_user_area">
-				<h3>Add new operator</h3>
-					<input type="text" id="user_login" placeholder=" | Enter login" size="45" /><br>
-					<input type="text" id="user_name" placeholder=" | Enter name" size="45" /><br>
-					<input type="password" id="user_password" placeholder=" | Enter password" size="45" /><br>
-					<input type="password" id="user_repassword" placeholder=" | Retype password" size="45" /><br>
-					<input type="password" id="admin_password" placeholder=" | Enter current password" size="45" /><br>
-					<p align=center><input class="button_all" type="button" id="user_register" value="Register" onclick="addUser()"/></p>
-				<div class="set_error" id="user_add_confirm"></div>
-			</div>
-			<div id="change_pass_area">
-				<h3>Change your password</h3>
-					<input type="password" id="admin_new_password" placeholder=" | Enter password" size="45" /><br>
-					<input type="password" id="admin_new_repassword" placeholder=" | Retype password" size="45" /><br>
-					<input type="password" id="admin_current_password" placeholder=" | Enter current password" size="45" /><br>
-					<p align=center><input class="button_all" type="button" id="change_password" value="Change password" onclick="changePass()" /></p>
-				<div class="set_error" id="pass_change_confirm"></div>
+			<div id="settings_wrapper">
+				
+				<div id="set_obj_area">
+					<h3>Add new object</h3>
+					<input type="text" id="obj_name" placeholder=" | Enter object name" size="45" /><br>
+					<p align=center><input class="button_all" type="button" id="obj_add" value="Add" onclick="addObject()" /></p>
+					<div class="set_error" id="obj_add_confirm"></div>
+				</div>
+				<div id="set_user_area">
+					<h3>Add new operator</h3>
+						<input type="text" id="user_login" placeholder=" | Enter login" size="45" /><br>
+						<input type="text" id="user_name" placeholder=" | Enter name" size="45" /><br>
+						<input type="password" id="user_password" placeholder=" | Enter password" size="45" /><br>
+						<input type="password" id="user_repassword" placeholder=" | Retype password" size="45" /><br>
+						<input type="password" id="admin_password" placeholder=" | Enter current password" size="45" /><br>
+						<p align=center><input class="button_all" type="button" id="user_register" value="Register" onclick="addUser()"/></p>
+					<div class="set_error" id="user_add_confirm"></div>
+				</div>
+				<div id="change_pass_area">
+					<h3>Change your password</h3>
+						<input type="password" id="admin_new_password" placeholder=" | Enter password" size="45" /><br>
+						<input type="password" id="admin_new_repassword" placeholder=" | Retype password" size="45" /><br>
+						<input type="password" id="admin_current_password" placeholder=" | Enter current password" size="45" /><br>
+						<p align=center><input class="button_all" type="button" id="change_password" value="Change password" onclick="changePass()" /></p>
+					<div class="set_error" id="pass_change_confirm"></div>
+				</div>
 			</div>
 		</section>
 		
@@ -522,6 +679,63 @@
 		
 		<section id="UnionPage" class="hidden">
 			<!---->
+			<div id="up_left">
+				<div id="up_objNameId"></div>
+				<div id="up_controls">
+					<h3>Controller</h3>
+					<div id="arrows_block">
+						<input type="button" class="button_all" value="Up"></br>
+						<input type="button" class="button_all" value="Left"><input type="button" class="button_all" value="Right"></br>
+						<input type="button" class="button_all" value="Down">
+					</div>
+					<div id="controlBlock4">
+						<input type="button" class="button_all" value="^"></br>
+						<input type="button" class="button_all" value="Get"></br>
+						<input type="button" class="button_all" value="v">
+					</div>
+					<div id="controlBlock2">
+						<label>Follow trace id:<select onchange="mes()" class="button_all">
+							<option>One</option>
+							<option>Two</option>
+							<option>Three</option>
+						</select></label></br>
+					</div>
+					<div id="controlBlock1">
+						<label><input type="checkbox" onclick="setTrackingFlag(this)" id="ctrlTracking"> Tracking</label>
+					</div>
+					<div id="controlBlock4">
+						<input type="button" class="button_all" value="Turn off">
+						<input type="button" class="button_all" value="Remove">
+					</div>
+					
+				<!--	<div id="controlBlock1">
+						<input type="checkbox" onclick="observingTimerSet(this)" id="ctrlReGetPosition">Observation</br>
+						<input type="checkbox" onclick="setTrackingFlag(this)" id="ctrlTracking">Tracking 
+					</div>-->
+				</div>
+				<div id="nav_data">
+					<h3>Information</h3>
+					<div id="navBlock1">
+						<p><b>Current position</b></p>
+						<p id="nav_curPos">Latitude:</br>
+						Longitude:</br>
+						Altitude:</p>
+						<p><b>Status</b></p>
+						<p><b>Following the trace</b></p>
+						<p><b>Id</b></p>
+					</div>
+				<!--	<div id="navBlock2">
+						<p>Mouse position</p>
+						<p id="nav_mousePos">Latitude:</br>
+						Longitude:</p>
+					</div>-->
+				</div>
+				<div id="up_cameras">
+					<h3>Cameras</h3>
+					<p align="center"><img id="camera1" src="camera.png" width="250px" onclick="egg()"></p>
+				</div>
+				
+			</div>
 			<div id="up_right">
 				<div id="up_gEarth"><!-- It's gEarth paste block -->
 					<div id="map3d_ins_tag_up"></div>
@@ -532,51 +746,10 @@
 					<div id="mapG"></div>
 				</div>
 			</div>
-			<div id="up_left">
-				<div id="up_cameras">
-					<h3>Cameras</h3>
-					<img id="camera1" class="hidden" src="IMG_1934.jpg" height=85%>
-				</div>
-				<div id="nav_data">
-					<h3>Navigation</h3>
-					<div id="navBlock1">
-						<p>Current position</p>
-						<p id="nav_curPos">Latitude:</br>
-						Longitude:</br>
-						Altitude:</p>
-					</div>
-					<div id="navBlock2">
-						<p>Mouse position</p>
-						<p id="nav_mousePos">Latitude:</br>
-						Longitude:</p>
-					</div>
-				</div>
-				<div id="up_controls">
-					<h3>Control panel</h3>
-					<div id="controlBlock1">
-						<input type="checkbox" onclick="observingTimerSet(this)" id="ctrlReGetPosition">Observation</br>
-						<input type="checkbox" onclick="setTrackingFlag(this)" id="ctrlTracking">Tracking 
-					</div>
-					<div id="controlBlock2">
-						<input type="checkbox" onclick="camera_load()" id="cameraOnOff">Camera</br>
-						<input type="checkbox" id="onBoardGPS">OnBoard GPS
-					</div>
-					<div id="controlBlock3">
-						<input type="button" value="Up"></br>
-						<input type="button" value="Left"><input type="button" value="Right"></br>
-						<input type="button" value="Down">
-					</div>
-					<div id="controlBlock4">
-						<input type="button" value="^"></br>
-						<input type="button" value="v">
-					</div>
-					<div id="controlBlock5">
-						<input type="button" value="Get">
-					</div>
-				</div>
-			</div>
+			
 		<!--	-->
 		</section>
+		<footer id="footer">O.L.Vi.</footer>
 		<?php } ?>
 	</body>
 </html>

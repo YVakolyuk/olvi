@@ -1,0 +1,81 @@
+<html>
+<head>
+  <title>Sample</title>
+  <script type="text/javascript" src="https://www.google.com/jsapi"> </script>
+  <script type="text/javascript">
+    var ge;
+    google.load("earth", "1", {"other_params":"sensor=true_or_false"});
+
+    function init() {
+      google.earth.createInstance('map3d', initCB, failureCB);
+    }
+	var placemark = [];
+	var point = [];
+	var balloon = [];
+    function initCB(instance) {
+      ge = instance;
+      ge.getWindow().setVisibility(true);
+	  /*
+	  placemark[0]=ge.createPlacemark('');
+	  point[0]=ge.createPoint('');
+	  point[0].setLatitude(50);
+	  point[0].setLongitude(36);
+	  placemark[0].setGeometry(point[0]);
+	  placemark[0].setDescription('Hello <input type="button" value="Hi" onclick="alarm(0)">');
+	  ge.getFeatures().appendChild(placemark[0]);
+	  balloon[0]=ge.createHtmlStringBalloon('');
+	  balloon[0].setFeature(placemark[0]);
+	  balloon[0].setContentString(placemark[0].getDescription());
+	  ge.setBalloon(balloon[0]);
+	  
+	  placemark[1]=ge.createPlacemark('');
+	  point[1]=ge.createPoint('');
+	  point[1].setLatitude(50.01);
+	  point[1].setLongitude(36.01);
+	  placemark[1].setGeometry(point[1]);
+	  placemark[1].setDescription('Hello <input type="button" value="Hi" onclick="alarm(1)">');
+	  ge.getFeatures().appendChild(placemark[1]);*/
+	  
+	  for(var i=0;i<2;i++) {
+		placemark[i]=ge.createPlacemark('');
+	  point[i]=ge.createPoint('');
+	  point[i].setLatitude(50+i*0.01);
+	  point[i].setLongitude(36);
+	  placemark[i].setGeometry(point[i]);
+	  placemark[i].setDescription('Hello <input type="button" value="Hi" onclick="alarm('+i+')">');
+	  ge.getFeatures().appendChild(placemark[i]);
+	  
+		eventoPlace(placemark[i]);
+	  }
+    }
+	
+	function eventoPlace(placemark) {
+		google.earth.addEventListener(placemark, 'click', function(event) {
+		  // Запрещает открывать всплывающее окно по умолчанию.
+		  event.preventDefault();
+
+		  var content = placemark.getDescription();
+		  var balloon = ge.createHtmlStringBalloon('');
+		  balloon.setFeature(placemark);
+		  balloon.setContentString(content);
+		  ge.setBalloon(balloon);
+		});
+	}
+	
+	function alarm(th) {
+	if(!th)
+		alert("It's working 0");
+		else alert("It's working 1");
+	}
+
+    function failureCB(errorCode) {
+    }
+
+    google.setOnLoadCallback(init);
+  </script>
+
+</head>
+<body>
+  <div id="map3d" style="height: 400px; width: 600px;"></div>
+</body>
+</html>
