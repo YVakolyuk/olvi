@@ -1,23 +1,29 @@
 <html>
 <head>
 <title>My Test Page</title>
+<style>
+	.overlay {
+	width:100%;
+    height:100%;
+    position:absolute;
+    top:0;left:0;
+    z-index:999;
+	}
+</style>
 <script type="text/javascript">
-	function test() {
-		var a = [];
-		for(var i=0;i<4;i++)
-			a[i]=i;
-		alert(a[0]+" "+a[1]+" "+a[2]);
+	var block;
+	function createBlock(){
+    block = document.createElement('div');
+    block.className = 'overlay'
+    block.innerHTML = "It's modal window!! </br><input type='button' value='exit' onclick='exit()'/>"
+    document.body.appendChild(block);
+	}
+	function exit() {
+		document.body.removeChild(block);
 	}
 </script>
 </head>
 <body>
-<section>
-<div id="one" onclick="moveElem(this);">press 1</div></section>
-<section><div id="two" onclick="moveElem(this);">press 2</div></section>
-<!--<div onclick="moveElem(this);">press 3</div>
-<div onclick="moveElem(this);">press 4</div>-->
-<div id="elem">text</div>
-<input type="button" id="mm_mp" value="One" onclick="test()">
-<input type="button" id="mm_mp" value="Two" onclick="moveElemTwo()">
+	<input type="button" value="modal" onclick="createBlock()"/>
 </body>
 </html>

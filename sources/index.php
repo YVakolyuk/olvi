@@ -48,11 +48,8 @@
 				load_objects();
 				loadingObjectsTimer = setInterval(function() {load_objects();},2000);
 				
-				ge.getOptions().setFlyToSpeed(0.2);
 				la = ge.createLookAt('');
-				la.set(Number(49.979),Number(36.270), 0, ge.ALTITUDE_RELATIVE_TO_GROUND, 0, 65, 8000);
-				ge.getView().setAbstractView(la);
-				goToControl(28);
+				getNewLook("def");
 				function mousePosition(event) {
 					var currentLat=event.getLatitude();
 					var currentLng=event.getLongitude();
@@ -66,6 +63,19 @@
 
 			function failureCB(errorCode) {
 			}
+			
+			function getNewLook(option, lat, lng, alt) { //функция настраивает новый вид н карту либо по умолчанию, либо на указанные координаты
+				if(option=="def") {
+					ge.getOptions().setFlyToSpeed(0.2);
+					la.set(Number(49.979),Number(36.270), 0, ge.ALTITUDE_RELATIVE_TO_GROUND, 0, 65, 8000);
+				} else {
+					ge.getOptions().setFlyToSpeed(1);
+					la.set(Number(lat),Number(lng), 0, ge.ALTITUDE_RELATIVE_TO_GROUND, 0, 70, (Number(alt)*4));
+				}
+				//	map.setCenter(pos);
+				ge.getView().setAbstractView(la);
+			}
+			
 			var placemarks = []; //массив меток обьектов на глобусе
 			var local_point = []; //массив хранящий координаты для каждой из метки
 			var local_icon;
@@ -101,13 +111,11 @@
 						local_style = ge.createStyle(''); //создает новый стиль
 						local_icon.setHref(image);
 						local_style.getIconStyle().setIcon(local_icon); //применяет значок к стилю
-						//alert(data);
 					//	alert("get "+local_statusON_counter);
 						if(local_sample>objects_array.length && local_creationFlag) {
 							for(var i=0;i<local_sample;i++) {
 								ge.getFeatures().removeChild(placemarks[i]);
 								ge.getFeatures().removeChild(local_lineStringPlacemark[i]);
-							//	alert('remove '+placemarks[i].getName());
 							}
 						} 						
 						objList.innerHTML = "";
@@ -173,9 +181,6 @@
 						}
 						local_sample=objects_array.length;
 						document.getElementById("footer").innerHTML = "Now enabled "+countOn+" objects. The other "+countOff+" are turned off and in standby mode.";
-						
-					//	alert(local_create_counter);
-					//	alert(findObject(28));
 					}
 				});				
 			}
@@ -200,21 +205,105 @@
 				}
 			}
 			
-			function goToControl(o_id) { //функция запускает переход на страницу Control panel для выбранного обьекта
+			var loadObjectInfoTimer; //идентификатор таймера обновления информации на странице control panel
+			var controlObjId; //идентификатор контролируемого объекта в базе данных
+			function goToControl(o_id) { //функция запускает переход на страницу Control panel для выбранного обьекта,
+														//создает таймер обновления инфы на странице
+				controlObjId = o_id;
+				updObjectInfo();
+				loadObjectInfoTimer = setInterval(function() {updObjectInfo();},2000);
+
+			
+				showPage(4);
+			}
+			
+			function updObjectInfo() { //функция обновляет информацию в одноименном блоке на странице control panel
+				var num = findObject(controlObjId);
+				document.getElementById("up_objNameId").innerHTML = "<h2>Control panel "+objects_array[num].obj_name+"</h2>";
+				if(objects_array[num].status == "on") {
+					document.getElementById("switchObj").value = "Turn off";
+					if(document.getElementById("ctrlTracking").checked)
+						getNewLook("",objects_array[num].lat,objects_array[num].lng,objects_array[num].alt);
+				}
+				else
+					document.getElementById("switchObj").value = "Turn on";
+				document.getElementById("infoBlock").innerHTML = "<p><b>Current position</b></p>"+
+																								"<ul id='nav_curPos'>"+
+																									"<li>Latitude: "+objects_array[num].lat+";</li>"+
+																									"<li>Longitude: "+objects_array[num].lng+";</li>"+
+																									"<li>Altitude: "+objects_array[num].alt+".</li>"+
+																								"</ul>"+
+																								"<p><b>Status </b>"+objects_array[num].status+"</p>"+
+																								"<p><b>Follows the track </b>"+objects_array[num].id_track+"</p>"+
+																								"<p><b>Id </b>"+objects_array[num].id_object+"</p>";
+			}
+			
+			function objectSwitch() {//функция производит включение или выключение объекта, т.е. изменение записи о статусе в базе данных
+				var button = document.getElementById("switchObj");
+				if(button.value == "Turn off") {
+					postSwitchObject(controlObjId, "off");
+					button.value = "Turn on";
+					removeChildObj(controlObjId);
+				} else if(button.value == "Turn on") {
+					postSwitchObject(controlObjId, "on");
+					button.value = "Turn off";
+				}
+			}
+			
+			function removeChildObj(id) {
+				var num = findObject(id);
+				ge.getFeatures().removeChild(placemarks[num]);
+				ge.getFeatures().removeChild(local_lineStringPlacemark[num]);
+			}
+			
+			function postSwitchObject(id,stat) { //функция производит пост запрос к серверу, он предназначен для изменения статуса объекта в БД
 				$$a({
-					type:'get',//тип запроса: get,post либо head
-					url:'http://127.0.0.1/olvi/load_objects.php',//url адрес файла обработчика
-					data: {p: 'obj', id: o_id},
+					type:'post',//тип запроса: get,post либо head
+					url:'http://127.0.0.1/olvi/POSTobjSwitch.php',//url адрес файла обработчика
+					data:{'id_object':id,'stat':stat},//параметры запроса
 					response:'text',//тип возвращаемого ответа text либо xml
 					success:function (data) {//возвращаемый результат от сервера
-				//	alert(data);
-						var object_details = JSON.parse(data);
-						document.getElementById("up_objNameId").innerHTML = "<h2>Control panel "+object_details.obj_name+"</h2>";
-						showPage(4);
-						
+					
 					}
 				});
-				
+			}
+
+			function removeObj() {
+				document.getElementById("prompt_form_container").style.display="inline-block";
+			}
+			
+			function removeFormHide() {
+				document.getElementById("rem_pass").value = null;
+				document.getElementById("prompt_form_container").style.display="none";
+			}
+			
+			function removeFormSubmit() {
+				var admLogin = '<?php echo $_SESSION['olvi']; ?>';
+				var admPass = document.getElementById("rem_pass").value;
+				var confirm = document.getElementById("confirm_remove_object");
+				if(admPass!="") {
+					removeChildObj(controlObjId);
+					$$a({
+						type:'post',//тип запроса: get,post либо head
+						url:'http://127.0.0.1/olvi/POSTremoveObject.php',//url адрес файла обработчика
+						data:{'id':controlObjId,'login': admLogin, 'admPass': admPass},//параметры запроса
+						response:'text',//тип возвращаемого ответа text либо xml
+						success:function (data) {//возвращаемый результат от сервера
+							document.getElementById("rem_pass").value = null;
+							if(data=="deleted") {
+								removeFormHide();
+								showPage(0);
+							} else {
+								confirm.innerHTML = data;
+								confirm.style.display = "block";
+							}
+						}
+					});
+				}
+				else {
+					confirm.innerHTML = "Enter current password";
+					confirm.style.display = "block";
+				}
 			}
 			
 			function getPosition(flag) {
@@ -263,7 +352,7 @@
 				}
 			}
 			
-			function setTrackingFlag(th) {  //функция мост между двумя чекбоксами, устанавливает связь если отмечен один из чекбоксов, отмечается и другой
+		/*	function setTrackingFlag(th) {  //функция мост между двумя чекбоксами, устанавливает связь если отмечен один из чекбоксов, отмечается и другой
 				var chkB1 = document.getElementById('ctrlTracking');
 				var chkB2 = document.getElementById('ge_ctrlTracking');
 				var chkB3 = document.getElementById('gm_ctrlTracking');
@@ -278,7 +367,7 @@
 					chkB2.checked = false;
 					chkB3.checked = false;
 				}
-			}
+			}*/
 			
 			var flightPlanCoordinates=[];
 			var flightPath;
@@ -406,7 +495,8 @@
 					document.getElementById("UnionPage").style.display="none";
 					
 					replaceDOM("map3d", "map3d_ins_tag");
-				//	document.getElementById("map3d").style.height= '95%';
+					getNewLook("def");
+					clearInterval(loadObjectInfoTimer);
 				}
 				if(numPage==1) {
 					document.getElementById("settings").style.display="block";
@@ -428,7 +518,7 @@
 					document.getElementById("UnionPage").style.display="none";
 
 					replaceDOM("mapG", "map_ins_tag");
-					document.getElementById("mapG").style.height= '95%';
+				//	document.getElementById("mapG").style.height= '95%';
 					google.maps.event.trigger(map, 'resize');  
 				}
 				if(numPage==4) { //show control page
@@ -605,7 +695,7 @@
 	
 		<section id="main_menu">
 			<p align=center><input class="button_all" type="button" id="mm_ge" value="Objects control" onclick="showPage(0)">&nbsp
-									<input class="button_all" type="button" id="mm_gm" value="Google Maps" onclick="showPage(3)">&nbsp
+									<input class="button_all" type="button" id="mm_gm" value="Track constructor" onclick="showPage(3)">&nbsp
 									<!--<input type="button" id="mm_cp" value="Control Page" onclick="showPage(4)">&nbsp-->
 									<input class="button_all" type="button" id="mm_set" value="Settings" onclick="showPage(1)">&nbsp
 									<input class="button_all" type="button" value="Logout" onclick="window.location='logout.php';"></p>
@@ -667,14 +757,17 @@
 		
 		<section id="GoogleMaps" class="hidden">
 			<div id="gm_menu">
-				&nbsp <input type="checkbox" onclick="observingTimerSet(this)" id="gm_ctrlReGetPosition">Observation
-				&nbsp <input type="checkbox" onclick="setTrackingFlag(this)" id="gm_ctrlTracking">Tracking
-				&nbsp | &nbsp
-				&nbsp <input type="button" id="gm_ctrlCreate" value="Create a path"> 
-				&nbsp <input type="checkbox" id="gm_ctrlDrawTrack">Draw track 
-				&nbsp <input type="button" id="gm_ctrlClear" value="Clear map" onclick="reInitialize()">
+				<input type="button" id="gm_ctrlCreate" class="button_all" value="Create a path"> 
+				<label>Show track:<select onchange="mes()" class="button_all">
+					<option>One</option>
+					<option>Two</option>
+					<option>Three</option>
+				</select></label>
+				<input type="button" id="gm_ctrlClear" class="button_all" value="Clear map" onclick="reInitialize()">
 			</div>
+			<div id="map_wrapper">
 			<div id="map_ins_tag"></div>
+			</div>
 		</section>
 		
 		<section id="UnionPage" class="hidden">
@@ -694,18 +787,18 @@
 						<input type="button" class="button_all" value="v">
 					</div>
 					<div id="controlBlock2">
-						<label>Follow trace id:<select onchange="mes()" class="button_all">
+						<label>Follow track id:<select onchange="mes()" class="button_all">
 							<option>One</option>
 							<option>Two</option>
 							<option>Three</option>
 						</select></label></br>
 					</div>
 					<div id="controlBlock1">
-						<label><input type="checkbox" onclick="setTrackingFlag(this)" id="ctrlTracking"> Tracking</label>
+						<label><input type="checkbox" id="ctrlTracking"> Tracking</label>
 					</div>
 					<div id="controlBlock4">
-						<input type="button" class="button_all" value="Turn off">
-						<input type="button" class="button_all" value="Remove">
+						<input type="button" id="switchObj" onclick="objectSwitch()" class="button_all" value="">
+						<input type="button" onclick="removeObj()" class="button_all" value="Remove">
 					</div>
 					
 				<!--	<div id="controlBlock1">
@@ -713,16 +806,18 @@
 						<input type="checkbox" onclick="setTrackingFlag(this)" id="ctrlTracking">Tracking 
 					</div>-->
 				</div>
-				<div id="nav_data">
+				<div id="up_info">
 					<h3>Information</h3>
-					<div id="navBlock1">
+					<div id="infoBlock">
 						<p><b>Current position</b></p>
-						<p id="nav_curPos">Latitude:</br>
-						Longitude:</br>
-						Altitude:</p>
-						<p><b>Status</b></p>
-						<p><b>Following the trace</b></p>
-						<p><b>Id</b></p>
+						<ul id="nav_curPos">
+							<li>Latitude:</li>
+							<li>Longitude:</li>
+							<li>Altitude:</li>
+						</ul>
+						<p><b>Status </b></p>
+						<p><b>Follows the track </b></p>
+						<p><b>Id </b></p>
 					</div>
 				<!--	<div id="navBlock2">
 						<p>Mouse position</p>
@@ -746,10 +841,18 @@
 					<div id="mapG"></div>
 				</div>
 			</div>
-			
 		<!--	-->
 		</section>
 		<footer id="footer">O.L.Vi.</footer>
+		<div id="prompt_form_container" class="hidden">
+			<form id="prompt_form">
+				You are confident in your decision? You can't cancel this action!</br>
+				<input type="password" id="rem_pass" placeholder=" | Enter current password" required /></br>
+				<input type="button" onclick="removeFormSubmit()" class="button_all" value="Yes">
+				<input type="button" onclick="removeFormHide()" class="button_all" value="Cancel">
+				<div id="confirm_remove_object"></div>
+			</form>
+		</div>
 		<?php } ?>
 	</body>
 </html>
