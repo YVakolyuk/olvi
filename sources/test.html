@@ -11,6 +11,24 @@
 	}
 </style>
 <script type="text/javascript">
+	var keyhandler = function(e){ 
+	if (!e){
+		var e = event;
+	};
+	if (e.keyCode == 9){
+		alert("Ctrl-Tab!"); 
+	};
+};
+ function init() {
+	if (document.addEventListener){
+		document.addEventListener('keypress', keyhandler, false);
+	} else if (document.attachEvent){
+		document.attachEvent('onkeypress', keyhandler);
+	} else {
+		document.onkeypress = keyhandler;
+	};
+	alert("loaded");
+	}
 	var block;
 	function createBlock(){
     block = document.createElement('div');
@@ -23,7 +41,7 @@
 	}
 </script>
 </head>
-<body>
+<body onload="init()">
 	<input type="button" value="modal" onclick="createBlock()"/>
 </body>
 </html>

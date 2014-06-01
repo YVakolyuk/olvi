@@ -47,6 +47,7 @@
 						
 				load_objects();
 				loadingObjectsTimer = setInterval(function() {load_objects();},2000);
+				load_tracks();
 				
 				la = ge.createLookAt('');
 				getNewLook("def");
@@ -227,6 +228,11 @@
 				}
 				else
 					document.getElementById("switchObj").value = "Turn on";
+				var trackName;
+				for(var i=0;i<tracks.length;i++) {
+					if(tracks[i].id_track == objects_array[num].id_track)
+						trackName = tracks[i].track_name;
+				}
 				document.getElementById("infoBlock").innerHTML = "<p><b>Current position</b></p>"+
 																								"<ul id='nav_curPos'>"+
 																									"<li>Latitude: "+objects_array[num].lat+";</li>"+
@@ -234,8 +240,8 @@
 																									"<li>Altitude: "+objects_array[num].alt+".</li>"+
 																								"</ul>"+
 																								"<p><b>Status </b>"+objects_array[num].status+"</p>"+
-																								"<p><b>Follows the track </b>"+objects_array[num].id_track+"</p>"+
-																								"<p><b>Id </b>"+objects_array[num].id_object+"</p>";
+																								"<p><b>Follows the track </b>"+trackName+"</p>"+
+																								"<p><b>Object id </b>"+objects_array[num].id_object+"</p>";
 			}
 			
 			function objectSwitch() {//функция производит включение или выключение объекта, т.е. изменение записи о статусе в базе данных
@@ -270,11 +276,24 @@
 
 			function removeObj() {
 				document.getElementById("prompt_form_container").style.display="inline-block";
+				document.getElementById('rem_pass').focus();
+				document.body.onkeydown = function (e){
+					if(navigator.userAgent.match("Gecko")){
+						c=e.which;
+					}else{
+						c=e.keyCode;
+					}
+					if(c==9){
+					//	alert("TAB");
+						return false;
+					}
+				};
 			}
-			
+	
 			function removeFormHide() {
 				document.getElementById("rem_pass").value = null;
 				document.getElementById("prompt_form_container").style.display="none";
+				document.body.onkeydown = "";
 			}
 			
 			function removeFormSubmit() {
@@ -306,7 +325,23 @@
 				}
 			}
 			
-			function getPosition(flag) {
+			function changeObjTrack(id) {
+				if(id!="null"){
+				alert(id);
+					$$a({
+						type:'post',//тип запроса: get,post либо head
+						url:'http://127.0.0.1/olvi/POSTchangeObjTrack.php',//url адрес файла обработчика
+						data:{'id': controlObjId, 'id_track': id},//параметры запроса
+						response:'text',//тип возвращаемого ответа text либо xml
+						success:function (data) {//возвращаемый результат от сервера
+							document.getElementById("up_tracksSelector").value="null";
+							alert(data);
+						}
+					});
+				}
+			}
+			
+		/*	function getPosition(flag) {
 			$$a({
 				type:'get',//тип запроса: get,post либо head
 				url:'http://127.0.0.1/olvi/GETlocalPosition.php',//url адрес файла обработчика
@@ -350,7 +385,7 @@
 					chkB2.checked = false;
 					chkB3.checked = false;
 				}
-			}
+			}*/
 			
 		/*	function setTrackingFlag(th) {  //функция мост между двумя чекбоксами, устанавливает связь если отмечен один из чекбоксов, отмечается и другой
 				var chkB1 = document.getElementById('ctrlTracking');
@@ -369,7 +404,7 @@
 				}
 			}*/
 			
-			var flightPlanCoordinates=[];
+		/*	var flightPlanCoordinates=[];
 			var flightPath;
 			function getFly() {
 					//alert("getFly()"+reCord);
@@ -432,7 +467,7 @@
 					
 					document.getElementById("nav_curPos").innerHTML = "Latitude: " + reCord.latitude + "</br>Longitute: " + reCord.longitude +
 																											"</br>Altitude: " + reCord.altitude;
-			}
+			}*/
 			//^^^^^^^^^^^^^^^^^^^^^^^^^It's all GOOGLE EARTH^^^^^^^^^^^^^^^^^^^^^^^^^^
 			
 			//--------------------------------It's all GOOGLE MAPS---------------------------------
@@ -446,7 +481,7 @@
 			
 				var mapOptions = {
 					center: new google.maps.LatLng(49.999, 36.250),
-					zoom: 17,
+					zoom: 14,
 					scaleControl: true,
 					zoomControlOptions: {
 						style: google.maps.ZoomControlStyle.DEFAULT
@@ -459,7 +494,147 @@
 				flightPath = new google.maps.Polyline(polylineOptions);
 				
 				google.maps.event.addDomListener(window, 'load', googleMapsInitOnUP);
+				
+		/*		google.maps.event.addDomListener(up_trackSelector, 'change', function() {
+					setTimeout(drawCurrentTrack, 500);
+				});*/
+				
+				var gm_trackSelector = document.getElementById("gm_tracksSelector")
+				google.maps.event.addDomListener(gm_trackSelector, 'change', function() {
+				//	alert("Wow1111 "+ddd.value);
+					if(gm_trackSelector.value!="null") {
+						showTrackId = gm_trackSelector.value;
+						getMarkersForTrack(gm_trackSelector.value);
+						setTimeout(makeFlightPath, 500);
+						document.getElementById("gm_removeTrack").style.display="inline-block";
+					} else {
+						document.getElementById("gm_removeTrack").style.display="none";
+						setMarkersToNULL();
+					}
+				});
 			}
+			
+			function findTrack(id) { //функция производит поиск обьекта в массиве placemarks и возвращает его номер в массиве
+				for(var i=0;i<tracks.length;i++) {
+					if(tracks[i].id_track==id) {
+						return i;
+					}
+				}
+			}
+			
+			var showTrackId;
+			var tracks;
+			function load_tracks() {
+				var gm_tracksSelector = document.getElementById("gm_tracksSelector");
+				var up_tracksSelector = document.getElementById("up_tracksSelector");
+				gm_tracksSelector.innerHTML = "<option value='null'>select</option>";
+				up_tracksSelector.innerHTML = "<option value='null'>None</option>";
+				$$a({
+					type:'get',//тип запроса: get,post либо head
+					url:'http://127.0.0.1/olvi/GETallTracks.php',//url адрес файла обработчика
+					response:'text',//тип возвращаемого ответа text либо xml
+					error:function(num){
+						var arr=['Your browser does not support Ajax',
+							'Request failed',
+							'Address does not exist',
+							'The waiting time left'];
+						alert(arr[num]);
+					},
+					success:function (data) {//возвращаемый результат от сервера
+						tracks = JSON.parse(data);
+						for(var i=0;i<tracks.length;i++) {
+							gm_tracksSelector.innerHTML = gm_tracksSelector.innerHTML + 
+																			"<option value='"+tracks[i].id_track+"'>"+tracks[i].track_name+"</option>";
+							up_tracksSelector.innerHTML = up_tracksSelector.innerHTML + 
+																			"<option value='"+tracks[i].id_track+"'>"+tracks[i].track_name+"</option>";
+						}
+					}
+				});
+			}
+			
+			var markers_array;
+			function getMarkersForTrack(id) {
+				$$a({
+					type:'post',//тип запроса: get,post либо head
+					url:'http://127.0.0.1/olvi/POSTgetTrackMarkers.php',//url адрес файла обработчика
+					data:{'id_track': id},//параметры запроса
+					response:'text',//тип возвращаемого ответа text либо xml
+					error:function(num){
+						var arr=['Your browser does not support Ajax',
+							'Request failed',
+							'Address does not exist',
+							'The waiting time left'];
+						alert(arr[num]);
+					},
+					success:function (data) {//возвращаемый результат от сервера
+						markers_array = JSON.parse(data);
+					}
+				});
+			}
+			
+			function clearMap() {
+				setMarkersToNULL();
+				document.getElementById("gm_tracksSelector").value="null";
+				document.getElementById("gm_removeTrack").style.display="none";
+			}
+			
+			function setMarkersToNULL() {
+				flightPath.setMap(null);
+				startPoint.setMap(null);
+				finishPoint.setMap(null);
+			}
+			
+			var flightPlanCoordinates=[];
+			var flightPath = new google.maps.Polyline(polylineOptions);
+			var startPoint = new google.maps.Marker();
+			var finishPoint = new google.maps.Marker();
+			var iconUrl = "http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|";
+			function makeFlightPath() {
+				setMarkersToNULL();
+				flightPlanCoordinates = [];
+				
+				for(var i=0;i<markers_array.length;i++) {
+					var myLatlng=new google.maps.LatLng(markers_array[i].latitude,markers_array[i].longitude);
+					flightPlanCoordinates.push(myLatlng);
+				}
+				
+				flightPath.setPath(flightPlanCoordinates);
+				flightPath.setMap(map);
+				
+				var myLatlng=new google.maps.LatLng(markers_array[markers_array.length-1].latitude,markers_array[markers_array.length-1].longitude);
+				finishPoint.setPosition(myLatlng);
+				finishPoint.setMap(map);
+				finishPoint.setTitle('Finish track: '+ tracks[findTrack(showTrackId)].track_name);
+				finishPoint.setIcon(iconUrl+"ff0000");
+				
+				myLatlng=new google.maps.LatLng(markers_array[0].latitude,markers_array[0].longitude);
+				startPoint.setPosition(myLatlng);
+				startPoint.setMap(map);
+				startPoint.setTitle('Start track: '+ tracks[findTrack(showTrackId)].track_name);
+				startPoint.setIcon(iconUrl+"00a20b");
+
+				map.panTo(myLatlng);
+			}
+			
+			function removeTrack() {
+				var confirm = document.getElementById("remTrackConfirm");
+				$$a({
+					type:'post',//тип запроса: get,post либо head
+					url:'http://127.0.0.1/olvi/POSTremoveTrack.php',//url адрес файла обработчика
+					data:{'track': showTrackId},//параметры запроса
+					response:'text',//тип возвращаемого ответа text либо xml
+					success:function (data) {//возвращаемый результат от сервера
+						if(data=="deleted") {
+							clearMap();
+							load_tracks();
+						} else {
+							confirm.innerHTML = data;
+							confirm.style.display = "inline-block";
+						}
+					}
+				});
+			}
+			
 
 			//^^^^^^^^^^^^^^^^^^^^^^^^^^It's all GOOGLE MAPS^^^^^^^^^^^^^^^^^^^^^^^^^^
 			
@@ -653,7 +828,7 @@
 				}
 			}
 			
-			function mes() { alert("Wow"); }
+			function mes(th) { alert("Wow "+th); }
 			
 			var eggg=0;
 			function egg() {
@@ -758,12 +933,12 @@
 		<section id="GoogleMaps" class="hidden">
 			<div id="gm_menu">
 				<input type="button" id="gm_ctrlCreate" class="button_all" value="Create a path"> 
-				<label>Show track:<select onchange="mes()" class="button_all">
-					<option>One</option>
-					<option>Two</option>
-					<option>Three</option>
+				<label>Show track:<select id="gm_tracksSelector" class="button_all">
+					<option value="null">select</option>
 				</select></label>
-				<input type="button" id="gm_ctrlClear" class="button_all" value="Clear map" onclick="reInitialize()">
+				<input type="button" id="gm_removeTrack" class="button_all hidden" value="Remove track" onclick="removeTrack()">
+				<div id="remTrackConfirm" class="hidden"></div>
+				<input type="button" class="button_all" value="Clear map" onclick="clearMap()">
 			</div>
 			<div id="map_wrapper">
 			<div id="map_ins_tag"></div>
@@ -787,10 +962,8 @@
 						<input type="button" class="button_all" value="v">
 					</div>
 					<div id="controlBlock2">
-						<label>Follow track id:<select onchange="mes()" class="button_all">
-							<option>One</option>
-							<option>Two</option>
-							<option>Three</option>
+						<label>Follow track id:<select id="up_tracksSelector" onchange="changeObjTrack(this.value)" class="button_all">
+							<option value="null">None</option>
 						</select></label></br>
 					</div>
 					<div id="controlBlock1">

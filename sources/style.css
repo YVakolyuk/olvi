@@ -93,7 +93,6 @@ body{
 }
 
 #up_left {
-//border: 1px solid red;
 	width: 400px;
 	float: left;
 }
@@ -104,22 +103,12 @@ body{
 
 #up_controls {
 	margin: 0 15px 0 15px;
-//	border-top: 1px dashed #007bed;
 	padding: 10px 0px 5px 0px;
-//	height: 30%;
-//	width: 100%;
 }
 
-#controlBlock1, #controlBlock2, #controlBlock5 {
-//	float: left;
-	padding: 10px 20px 10px 0px;
+#controlBlock1, #controlBlock2, #arrows_block, #controlBlock4 {
+	padding-top: 15px;
 	text-align:center;
-}
-
-#arrows_block, #controlBlock4 {
-//	float: left;
-	padding-top: 20px;
-	text-align: center;
 }
 
 #up_info {

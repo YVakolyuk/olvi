@@ -1,0 +1,26 @@
+<html>
+<head>
+<script type="text/javascript">
+
+// We are going to catch the TAB key so that we can use it, Hooray!
+function catchTab(item,e){
+	if(navigator.userAgent.match("Gecko")){
+		c=e.which;
+	}else{
+		c=e.keyCode;
+	}
+	if(c==9){
+		/*replaceSelection(item,String.fromCharCode(9));
+		setTimeout("document.getElementById('"+item.id+"').focus();",0);	*/
+	//	alert("TAB");
+		return false;
+	}
+		    
+}
+</script>
+</head>
+<body >
+<form>
+<textarea name="data" id="data" rows="20" columns="35" wrap="off" onkeydown="return catchTab(this,event)" ></textarea>
+<input type="submit" name="submit" value="Submit"/>
+</form>
