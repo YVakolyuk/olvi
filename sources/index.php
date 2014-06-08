@@ -13,6 +13,9 @@
 		<script type="text/javascript" src="http://scriptjava.net/source/scriptjava/scriptjava.js"></script>
 		<script type="text/javascript">
 		//------------------------------------------It's all GOOGLE EARTH-------------------------------------------
+			var url = "http://<?php echo $_SERVER['SERVER_NAME']; ?>/olvi/"
+		//	var url = 'http://127.0.0.1/olvi/';
+		
 			var ge;//main GoogleEarth variable
 			var la;//main GoogleEarth look at variable
 			var reCord;
@@ -28,7 +31,9 @@
 			var lineStringPlacemark;
 			var lineString;
 			var lineStyle;
-			var image = 'http://127.0.0.1/olvi/plane.png';
+		//	var image = url+'plane_on.png';
+		
+			
 			//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 			google.load("earth", "1", {"other_params":"sensor=false"});
 
@@ -79,8 +84,10 @@
 			
 			var placemarks = []; //массив меток обьектов на глобусе
 			var local_point = []; //массив хранящий координаты для каждой из метки
-			var local_icon;
-			var local_style;
+			var local_on_icon;
+			var local_ctrl_icon;
+			var local_on_style;
+			var local_ctrl_style;
 			var local_lineStringPlacemark = [];
 			var local_lineString = [];
 			var local_lineStyle = [];
@@ -93,7 +100,7 @@
 			function load_objects() {
 				$$a({
 					type:'get',//тип запроса: get,post либо head
-					url:"http://127.0.0.1/olvi/load_objects.php", 
+					url: url+"load_objects.php", 
 					data: {p: "load"},//url адрес файла обработчика
 					response:'text',//тип возвращаемого ответа text либо xml
 					error:function(num){
@@ -108,11 +115,17 @@
 						var countOn = 0;
 						var countOff = 0;
 						objects_array = JSON.parse(data);
-						local_icon = ge.createIcon('');
-						local_style = ge.createStyle(''); //создает новый стиль
-						local_icon.setHref(image);
-						local_style.getIconStyle().setIcon(local_icon); //применяет значок к стилю
-					//	alert("get "+local_statusON_counter);
+						local_on_icon = ge.createIcon('');
+						local_ctrl_icon = ge.createIcon('');
+						
+						local_on_style = ge.createStyle(''); //создает новый стиль
+						local_on_icon.setHref(url+'plane_on.png');
+						local_on_style.getIconStyle().setIcon(local_on_icon); //применяет значок к стилю
+						
+						local_ctrl_style = ge.createStyle(''); //создает новый стиль
+						local_ctrl_icon.setHref(url+'plane.png');
+						local_ctrl_style.getIconStyle().setIcon(local_ctrl_icon); //применяет значок к стилю
+					
 						if(local_sample>objects_array.length && local_creationFlag) {
 							for(var i=0;i<local_sample;i++) {
 								ge.getFeatures().removeChild(placemarks[i]);
@@ -125,7 +138,7 @@
 							if(objects_array[i].status!="off") {
 								countOn++;
 								objList.innerHTML = objList.innerHTML+"<li><a href='#' onclick='goToControl("+objects_array[i].id_object+");return false;'>"+
-																															"<img src='http://127.0.0.1/olvi/plane_on.png' height='20px'>"+
+																															"<img src='"+url+"plane_on.png' height='20px'>"+
 																																objects_array[i].obj_name+"</a></li>";
 								if(!placemarks[i] || !local_point[i] || !local_lineStringPlacemark[i] || !local_lineString[i]) {
 									placemarks[i] = ge.createPlacemark(''); //создаем метку
@@ -144,11 +157,14 @@
 									local_lineStyle[i] = local_lineStringPlacemark[i].getStyleSelector().getLineStyle();
 									local_lineStyle[i].setWidth(5);
 									local_lineStyle[i].getColor().set('9900ffff');  // формат aabbggrr
-								
-									placemarks[i].setStyleSelector(local_style); //применяет стиль к метке
-								//	alert("if not then create " + i+" "+objects_array[i].obj_name);
 								}
 								
+								if(controlObjId==objects_array[i].id_object) {
+									placemarks[i].setStyleSelector(local_ctrl_style); //применяет стиль к метке
+								} else {//if (controlObjId != objects_array[i].id_object){
+									placemarks[i].setStyleSelector(local_on_style); //применяет стиль к метке
+								//	alert("fuck");
+								}
 								
 								local_point[i].setLatitude(Number(objects_array[i].lat)); //устанавливаем широту для координаты
 								local_point[i].setLongitude(Number(objects_array[i].lng)); //устанавливаем долготу для координаты
@@ -175,7 +191,7 @@
 								
 							}else {
 							objList.innerHTML = objList.innerHTML+"<li><a href='#' onclick='goToControl("+objects_array[i].id_object+");return false;'>"+
-																															"<img src='http://127.0.0.1/olvi/plane_off.png' height='20px'>"+
+																															"<img src='"+url+"plane_off.png' height='20px'>"+
 																																objects_array[i].obj_name+"</a></li>";
 							countOff++;
 							}
@@ -214,20 +230,34 @@
 				updObjectInfo();
 				loadObjectInfoTimer = setInterval(function() {updObjectInfo();},2000);
 
+				showTrackId = objects_array[findObject(o_id)].id_track;
+				if (showTrackId!="null") {
+					getMarkersForTrack(showTrackId);
+					setTimeout(makeFlightPath, 500);
+				}
 			
 				showPage(4);
 			}
-			
+			var mapsObjImage = url+'plane.png';
 			function updObjectInfo() { //функция обновляет информацию в одноименном блоке на странице control panel
 				var num = findObject(controlObjId);
+				var pos = new google.maps.LatLng(Number(objects_array[num].lat), Number(objects_array[num].lng));
 				document.getElementById("up_objNameId").innerHTML = "<h2>Control panel "+objects_array[num].obj_name+"</h2>";
 				if(objects_array[num].status == "on") {
+					currentObjPosition.setMap(map);
+					currentObjPosition.setPosition(pos);
+					currentObjPosition.setIcon(mapsObjImage);
 					document.getElementById("switchObj").value = "Turn off";
-					if(document.getElementById("ctrlTracking").checked)
+					if(document.getElementById("ctrlTracking").checked) {
 						getNewLook("",objects_array[num].lat,objects_array[num].lng,objects_array[num].alt);
+						map.setCenter(pos);
+					}
 				}
-				else
+				else {
 					document.getElementById("switchObj").value = "Turn on";
+					currentObjPosition.setMap(null);
+				}
+				
 				var trackName;
 				for(var i=0;i<tracks.length;i++) {
 					if(tracks[i].id_track == objects_array[num].id_track)
@@ -250,6 +280,7 @@
 					postSwitchObject(controlObjId, "off");
 					button.value = "Turn on";
 					removeChildObj(controlObjId);
+					
 				} else if(button.value == "Turn on") {
 					postSwitchObject(controlObjId, "on");
 					button.value = "Turn off";
@@ -265,7 +296,7 @@
 			function postSwitchObject(id,stat) { //функция производит пост запрос к серверу, он предназначен для изменения статуса объекта в БД
 				$$a({
 					type:'post',//тип запроса: get,post либо head
-					url:'http://127.0.0.1/olvi/POSTobjSwitch.php',//url адрес файла обработчика
+					url: url+'POSTobjSwitch.php',//url адрес файла обработчика
 					data:{'id_object':id,'stat':stat},//параметры запроса
 					response:'text',//тип возвращаемого ответа text либо xml
 					success:function (data) {//возвращаемый результат от сервера
@@ -275,7 +306,7 @@
 			}
 
 			function removeObj() {
-				document.getElementById("prompt_form_container").style.display="inline-block";
+				document.getElementById("delete_obj_form_container").style.display="inline-block";
 				document.getElementById('rem_pass').focus();
 				document.body.onkeydown = function (e){
 					if(navigator.userAgent.match("Gecko")){
@@ -292,7 +323,7 @@
 	
 			function removeFormHide() {
 				document.getElementById("rem_pass").value = null;
-				document.getElementById("prompt_form_container").style.display="none";
+				document.getElementById("delete_obj_form_container").style.display="none";
 				document.body.onkeydown = "";
 			}
 			
@@ -304,7 +335,7 @@
 					removeChildObj(controlObjId);
 					$$a({
 						type:'post',//тип запроса: get,post либо head
-						url:'http://127.0.0.1/olvi/POSTremoveObject.php',//url адрес файла обработчика
+						url: url+'POSTremoveObject.php',//url адрес файла обработчика
 						data:{'id':controlObjId,'login': admLogin, 'admPass': admPass},//параметры запроса
 						response:'text',//тип возвращаемого ответа text либо xml
 						success:function (data) {//возвращаемый результат от сервера
@@ -327,156 +358,35 @@
 			
 			function changeObjTrack(id) {
 				if(id!="null"){
-				alert(id);
 					$$a({
 						type:'post',//тип запроса: get,post либо head
-						url:'http://127.0.0.1/olvi/POSTchangeObjTrack.php',//url адрес файла обработчика
+						url: url+'POSTchangeObjTrack.php',//url адрес файла обработчика
 						data:{'id': controlObjId, 'id_track': id},//параметры запроса
 						response:'text',//тип возвращаемого ответа text либо xml
 						success:function (data) {//возвращаемый результат от сервера
 							document.getElementById("up_tracksSelector").value="null";
-							alert(data);
 						}
 					});
+					getMarkersForTrack(id);
+					showTrackId = id;
+					setTimeout(makeFlightPath, 500);
 				}
 			}
-			
-		/*	function getPosition(flag) {
-			$$a({
-				type:'get',//тип запроса: get,post либо head
-				url:'http://127.0.0.1/olvi/GETlocalPosition.php',//url адрес файла обработчика
-				response:'text',//тип возвращаемого ответа text либо xml
-				error:function(num){
-					var arr=['Your browser does not support Ajax',
-                        'Request failed',
-                        'Address does not exist',
-                        'The waiting time left'];
-					alert(arr[num]);
-				},
-				success:function (data) {//возвращаемый результат от сервера
-					if(flag) {
-						reCord = JSON.parse(data);
-//						alert("Inner "+reCord);
-						getFly();
-					}
-				}
-			});
-			}
-			
-			var timerSet_flag=0;//флаг установки таймера 0-не установлен, 1-установлен
-			function observingTimerSet(th) { //функция мост между двумя чекбоксами, устанавливает связь если отмечен один из чекбоксов, отмечается и другой
-																												//кроме того в функции происходит щапуск таймера обновления или его остановка
-				var chkB1 = document.getElementById('ctrlReGetPosition');
-				var chkB2 = document.getElementById('ge_ctrlReGetPosition');
-				var chkB3 = document.getElementById('gm_ctrlReGetPosition');
-				if(th.checked&&!timerSet_flag) {
-					getPosition(true);
-					refIntId = setInterval(function() {getPosition(true);},2000);
-					timerSet_flag=1;
-					
-					chkB1.checked = true;
-					chkB2.checked = true;
-					chkB3.checked = true;
-				}
-				else {
-					timerSet_flag=0;
-					clearInterval(refIntId);
-					chkB1.checked = false;
-					chkB2.checked = false;
-					chkB3.checked = false;
-				}
-			}*/
-			
-		/*	function setTrackingFlag(th) {  //функция мост между двумя чекбоксами, устанавливает связь если отмечен один из чекбоксов, отмечается и другой
-				var chkB1 = document.getElementById('ctrlTracking');
-				var chkB2 = document.getElementById('ge_ctrlTracking');
-				var chkB3 = document.getElementById('gm_ctrlTracking');
-				if(th.checked) {
-					chkB1.checked = true;
-					chkB2.checked = true;
-					chkB3.checked = true;
-				}
-				else
-				{
-					chkB1.checked = false;
-					chkB2.checked = false;
-					chkB3.checked = false;
-				}
-			}*/
-			
-		/*	var flightPlanCoordinates=[];
-			var flightPath;
-			function getFly() {
-					//alert("getFly()"+reCord);
-				//	var image = 'http://127.0.0.1/olvi/plane.png';
-					var pos = new google.maps.LatLng(Number(reCord.latitude), Number(reCord.longitude));
-					if(!flCreP) {
-						placemark = ge.createPlacemark('');
-						icon = ge.createIcon('');
-						style = ge.createStyle(''); //создает новый стиль
-						point = ge.createPoint('');
-						
-						lineStringPlacemark = ge.createPlacemark('');
-						lineString = ge.createLineString('');
-						
-						
-						icon.setHref(image);
-						style.getIconStyle().setIcon(icon); //применяет значок к стилю
-						placemark.setStyleSelector(style); //применяет стиль к метке
-						
-						lineStringPlacemark.setGeometry(lineString);
-						lineString.setExtrude(true);
-						lineString.setAltitudeMode(ge.ALTITUDE_ABSOLUTE);
-						lineStringPlacemark.setStyleSelector(ge.createStyle(''));
-						lineStyle = lineStringPlacemark.getStyleSelector().getLineStyle();
-						lineStyle.setWidth(5);
-						lineStyle.getColor().set('9900ffff');  // формат aabbggrr
-						flCreP=1;
-					}
-					placemark.setName("Current altitude "+reCord.altitude+ " m");
-					
-					if(document.getElementById('ctrlTracking').checked) {
-						la.set(Number(reCord.latitude),Number(reCord.longitude), 0, ge.ALTITUDE_RELATIVE_TO_GROUND, 0, 70, (Number(reCord.altitude)*4));
-						ge.getView().setAbstractView(la);
-						map.setCenter(pos);
-					}
-					
-					point.setLatitude(Number(reCord.latitude));
-					point.setLongitude(Number(reCord.longitude));
-					point.setAltitudeMode(ge.ALTITUDE_ABSOLUTE);
-					point.setAltitude(Number(reCord.altitude));
-					placemark.setGeometry(point);
-					ge.getFeatures().appendChild(placemark);
-
-					lineString.getCoordinates().clear();
-					lineString.getCoordinates().pushLatLngAlt(Number(reCord.latitude), Number(reCord.longitude), Number(reCord.altitude));
-
-					ge.getFeatures().appendChild(lineStringPlacemark);
-					
-					
-					locPoint.setMap(map);
-					locPoint.setPosition(pos);
-					locPoint.setIcon(image);
-					
-					if(document.getElementById('gm_ctrlDrawTrack').checked) {
-						flightPlanCoordinates.push(pos);
-						flightPath.setPath(flightPlanCoordinates);
-					//	flightPath.setOptions(polylineOptions);
-						flightPath.setMap(map);
-					}
-					
-					document.getElementById("nav_curPos").innerHTML = "Latitude: " + reCord.latitude + "</br>Longitute: " + reCord.longitude +
-																											"</br>Altitude: " + reCord.altitude;
-			}*/
 			//^^^^^^^^^^^^^^^^^^^^^^^^^It's all GOOGLE EARTH^^^^^^^^^^^^^^^^^^^^^^^^^^
 			
 			//--------------------------------It's all GOOGLE MAPS---------------------------------
-			var locPoint;
-			var polylineOptions = {
+			var polylineOptionsShow = {
 				strokeColor: '#0000FF',
 				strokeWeight: 2
 			};
+			var polylineOptionsCreation = {
+				strokeColor: '#000000',
+				strokeOpacity: 1.0,
+				strokeWeight: 3
+			};
+			var fl_crPath=0;
 			var map;
+			var currentObjPosition;
 			function googleMapsInitOnUP() {
 			
 				var mapOptions = {
@@ -490,18 +400,29 @@
 				};
 				map = new google.maps.Map(document.getElementById("mapG"), mapOptions);      
 				
-				locPoint = new google.maps.Marker({});
-				flightPath = new google.maps.Polyline(polylineOptions);
+				currentObjPosition = new google.maps.Marker({});
+				
+				flightPath = new google.maps.Polyline(polylineOptionsShow);
 				
 				google.maps.event.addDomListener(window, 'load', googleMapsInitOnUP);
 				
-		/*		google.maps.event.addDomListener(up_trackSelector, 'change', function() {
-					setTimeout(drawCurrentTrack, 500);
-				});*/
+				google.maps.event.addDomListener(document.getElementById('gm_ctrlCreate'), 'click', function() {
+				if(fl_crPath==0) {
+					fl_crPath=1;
+					document.getElementById('gm_ctrlCreate').value="Complete the path";
+					createPath();
+				}
+				else if(fl_crPath==1) {
+					fl_crPath=0;
+					document.getElementById('gm_ctrlCreate').value="Create a path";
+					clearMap();
+					firstMarkerCreation_flag=0;
+					load_tracks();
+				}
+			});
 				
 				var gm_trackSelector = document.getElementById("gm_tracksSelector")
 				google.maps.event.addDomListener(gm_trackSelector, 'change', function() {
-				//	alert("Wow1111 "+ddd.value);
 					if(gm_trackSelector.value!="null") {
 						showTrackId = gm_trackSelector.value;
 						getMarkersForTrack(gm_trackSelector.value);
@@ -510,6 +431,98 @@
 					} else {
 						document.getElementById("gm_removeTrack").style.display="none";
 						setMarkersToNULL();
+					}
+					document.getElementById("remTrackConfirm").style.display="none";
+				});				
+				
+				google.maps.event.addListener(map, 'click', addLatLng);
+			}
+			
+			function createPath() {
+				document.getElementById("remTrackConfirm").style.display="none";
+				document.getElementById("create_track_form_container").style.display="inline-block";
+				document.getElementById('path_name').focus();
+				document.body.onkeydown = function (e){
+					if(navigator.userAgent.match("Gecko")){
+						c=e.which;
+					}else{
+						c=e.keyCode;
+					}
+					if(c==9){
+					//	alert("TAB");
+						return false;
+					}
+				};
+			}
+	
+			function createFormHide(flag) {
+				document.getElementById("path_name").value = null;
+				document.getElementById("create_track_form_container").style.display="none";
+				document.body.onkeydown = "";
+				if (!flag) {
+					fl_crPath=0;
+					document.getElementById('gm_ctrlCreate').value="Create a path";
+				}
+			}
+			
+			var polylineCreation = new google.maps.Polyline(polylineOptionsCreation);
+			var newPathId;
+			function createFormSubmit() {
+				var pathName = document.getElementById("path_name").value;
+				if(pathName!="") {
+					$$a({
+						type:'post',//тип запроса: get,post либо head
+						url: url+'POSTnewPath.php',//url адрес файла обработчика
+						data:{'path_name': pathName},//параметры запроса
+						response:'text',//тип возвращаемого ответа text либо xml
+						error:function(num){
+							var arr=['Your browser does not support Ajax',
+								'Request failed',
+								'Address does not exist',
+								'The waiting time left'];
+							alert(arr[num]);
+						},
+						success:function (data) {//возвращаемый результат от сервера
+							newPathId = data;
+							setTimeout(createFormHide(1),500);
+							polylineCreation = new google.maps.Polyline(polylineOptionsCreation);
+							polylineCreation.setMap(map);
+						}
+					});
+				}
+			}
+			
+			var firstMarkerCreation_flag=0;
+			var firstMarkerCreation = new google.maps.Marker();
+			function addLatLng(event) { //функция создания траектории
+				if(fl_crPath==1) {
+					var path = polylineCreation.getPath();
+					// Because path is an MVCArray, we can simply append a new coordinate
+					// and it will automatically appear.
+					path.push(event.latLng);
+					
+					// Add a new marker at the new plotted point on the polyline.
+					if(!firstMarkerCreation_flag) {
+						firstMarkerCreation = new google.maps.Marker({
+							position: event.latLng,
+							title: "Coordinates " + event.latLng,
+							map: map
+						});
+						firstMarkerCreation.setIcon(iconUrl+"00a20b");
+						firstMarkerCreation_flag=1;
+					}
+					postMarkerPath(event.latLng.lat(),event.latLng.lng());
+				}
+			}
+			
+			function postMarkerPath(latitudePost,longitudePost) {
+				$$a({
+					type:'post',//тип запроса: get,post либо head
+					url: url+'POSTnewMarkerPath.php',//url адрес файла обработчика
+					data:{'lat':latitudePost,'lng':longitudePost,'path':newPathId},//параметры запроса
+					response:'text',//тип возвращаемого ответа text либо xml
+					success:function (data) {//возвращаемый результат от сервера
+						
 					}
 				});
 			}
@@ -531,7 +544,7 @@
 				up_tracksSelector.innerHTML = "<option value='null'>None</option>";
 				$$a({
 					type:'get',//тип запроса: get,post либо head
-					url:'http://127.0.0.1/olvi/GETallTracks.php',//url адрес файла обработчика
+					url: url+'GETallTracks.php',//url адрес файла обработчика
 					response:'text',//тип возвращаемого ответа text либо xml
 					error:function(num){
 						var arr=['Your browser does not support Ajax',
@@ -556,7 +569,7 @@
 			function getMarkersForTrack(id) {
 				$$a({
 					type:'post',//тип запроса: get,post либо head
-					url:'http://127.0.0.1/olvi/POSTgetTrackMarkers.php',//url адрес файла обработчика
+					url: url+'POSTgetTrackMarkers.php',//url адрес файла обработчика
 					data:{'id_track': id},//параметры запроса
 					response:'text',//тип возвращаемого ответа text либо xml
 					error:function(num){
@@ -576,16 +589,20 @@
 				setMarkersToNULL();
 				document.getElementById("gm_tracksSelector").value="null";
 				document.getElementById("gm_removeTrack").style.display="none";
+				document.getElementById("remTrackConfirm").style.display="none";
 			}
 			
 			function setMarkersToNULL() {
 				flightPath.setMap(null);
 				startPoint.setMap(null);
 				finishPoint.setMap(null);
+				polylineCreation.setMap(null);
+				firstMarkerCreation.setMap(null);
+				currentObjPosition.setMap(null);
 			}
 			
 			var flightPlanCoordinates=[];
-			var flightPath = new google.maps.Polyline(polylineOptions);
+			var flightPath = new google.maps.Polyline(polylineOptionsShow);
 			var startPoint = new google.maps.Marker();
 			var finishPoint = new google.maps.Marker();
 			var iconUrl = "http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|";
@@ -620,7 +637,7 @@
 				var confirm = document.getElementById("remTrackConfirm");
 				$$a({
 					type:'post',//тип запроса: get,post либо head
-					url:'http://127.0.0.1/olvi/POSTremoveTrack.php',//url адрес файла обработчика
+					url: url+'POSTremoveTrack.php',//url адрес файла обработчика
 					data:{'track': showTrackId},//параметры запроса
 					response:'text',//тип возвращаемого ответа text либо xml
 					success:function (data) {//возвращаемый результат от сервера
@@ -638,20 +655,12 @@
 
 			//^^^^^^^^^^^^^^^^^^^^^^^^^^It's all GOOGLE MAPS^^^^^^^^^^^^^^^^^^^^^^^^^^
 			
-			//---------------------------------It's all UNION PAGE------------------------------------
-		/*	function camera_load() { //функция включения камеры
-				if(document.getElementById("cameraOnOff").checked==true) 
-					document.getElementById("camera1").style.display="block";
-				else
-					document.getElementById("camera1").style.display="none";
-			}*/
-			
-			//^^^^^^^^^^^^^^^^^^^^^^^^^^^It's all UNION PAGE^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-			
 			//-------------------------------PAGES BLOCK--------------------------------------------
 			function initialize() { //начальная инициализация мепс и ерс
 				googleEarthInitOnUP();
 				googleMapsInitOnUP();
+				
+			//	alert(location.href);
 			}
 			
 			function replaceDOM(what,where) { //функция перемещения DOM элементов, в часности div maps&earth по страницам
@@ -678,14 +687,9 @@
 					document.getElementById("GoogleEarth").style.display="none";
 					document.getElementById("GoogleMaps").style.display="none";
 					document.getElementById("UnionPage").style.display="none";
+					
+					clearInterval(loadObjectInfoTimer);
 				}
-				/*if(numPage==2) {
-					document.getElementById("settings").style.display="none";
-					document.getElementById("GoogleEarth").style.display="none";
-					document.getElementById("main_page").style.display="block";
-					document.getElementById("GoogleMaps").style.display="none";
-					document.getElementById("UnionPage").style.display="none";
-				}*/
 				if(numPage==3) { //show all objects control page
 					document.getElementById("GoogleMaps").style.display="block";
 					document.getElementById("settings").style.display="none";
@@ -693,8 +697,10 @@
 					document.getElementById("UnionPage").style.display="none";
 
 					replaceDOM("mapG", "map_ins_tag");
-				//	document.getElementById("mapG").style.height= '95%';
 					google.maps.event.trigger(map, 'resize');  
+					clearInterval(loadObjectInfoTimer);
+					clearMap();
+					document.getElementById("ctrlTracking").checked = false;
 				}
 				if(numPage==4) { //show control page
 					document.getElementById("UnionPage").style.display="block";
@@ -705,6 +711,7 @@
 					replaceDOM("map3d", "map3d_ins_tag_up");
 					replaceDOM("mapG", "map_ins_tag_up");
 					google.maps.event.trigger(map, 'resize');  
+					clearMap();
 				}
 			}
 			//^^^^^^^^^^^^^^^^^^^^^^^^^PAGES BLOCK^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -716,7 +723,7 @@
 				if(objName!="") {
 					$$a({
 						type:'post',//тип запроса: get,post либо head
-						url:'http://127.0.0.1/olvi/POSTnewObject.php',//url адрес файла обработчика
+						url:url+'POSTnewObject.php',//url адрес файла обработчика
 						data:{'name':objName},//параметры запроса
 						response:'text',//тип возвращаемого ответа text либо xml
 						success:function (data) {//возвращаемый результат от сервера
@@ -731,7 +738,6 @@
 					confirm.innerHTML = "Enter some name for object!";
 					confirm.className = "set_error";
 					confirm.style.display = "block";
-//					alert('<?php echo $_SESSION['olvi']; ?>');
 				}
 			}
 			
@@ -748,7 +754,7 @@
 					if(userPassword == userRePassword) {
 						$$a({
 							type:'post',//тип запроса: get,post либо head
-							url:'http://127.0.0.1/olvi/registration.php',//url адрес файла обработчика
+							url:url+'registration.php',//url адрес файла обработчика
 							data:{'login':userLogin, 'userName':userName, 'userPassword':userPassword, 'admLogin': admLogin, 'admPass':admPass },//параметры запроса
 							response:'text',//тип возвращаемого ответа text либо xml
 							success:function (data) {//возвращаемый результат от сервера
@@ -794,7 +800,7 @@
 					if(admNewPass == admNewRePass) {
 						$$a({
 							type:'post',//тип запроса: get,post либо head
-							url:'http://127.0.0.1/olvi/POSTchPass.php',//url адрес файла обработчика
+							url:url+'POSTchPass.php',//url адрес файла обработчика
 							data:{'login':admLogin, 'password':admPass, 'newPassword':admNewPass},//параметры запроса
 							response:'text',//тип возвращаемого ответа text либо xml
 							success:function (data) {//возвращаемый результат от сервера
@@ -870,16 +876,10 @@
 	
 		<section id="main_menu">
 			<p align=center><input class="button_all" type="button" id="mm_ge" value="Objects control" onclick="showPage(0)">&nbsp
-									<input class="button_all" type="button" id="mm_gm" value="Track constructor" onclick="showPage(3)">&nbsp
-									<!--<input type="button" id="mm_cp" value="Control Page" onclick="showPage(4)">&nbsp-->
+									<input class="button_all" type="button" id="mm_gm" value="Path constructor" onclick="showPage(3)">&nbsp
 									<input class="button_all" type="button" id="mm_set" value="Settings" onclick="showPage(1)">&nbsp
 									<input class="button_all" type="button" value="Logout" onclick="window.location='logout.php';"></p>
 		</section>
-		<!--<section id="main_page">
-			<p align=center>It's main page. You can choose one of menu buttons. And may the force be with you!</br>
-			<img src="http://imgs.steps.dragoart.com/how-to-draw-chibi-darth-vader-step-6_1_000000013000_5.jpg" width=200px></p>
-			
-		</section>-->
 		<section id="GoogleEarth">
 			<div id="ge_left">
 				<h2>List of objects</h2>
@@ -888,13 +888,6 @@
 				</ul>
 			</div>
 			<div id="ge_right">
-				<!--<div id="ge_menu">
-					<input type="button" onclick="load_objects()" id='sCenter' value="Go" /> кнопка одиночного запуска слежения, без таймера
-					<input type="button" onclick="removePl()" id='rCenter' value="remove" />
-					&nbsp <input type="checkbox" onclick="observingTimerSet(this)" id="ge_ctrlReGetPosition">Observation
-					&nbsp <input type="checkbox" onclick="setTrackingFlag(this)" id="ge_ctrlTracking">Tracking 
-					&nbsp <input type="checkbox" onclick="gps()" id="ctrlGPS" value="Load position">Test GPS data
-				</div>-->
 				<div id="map3d_ins_tag"></div>
 				<div id="map3d"></div>
 			</div>
@@ -973,11 +966,6 @@
 						<input type="button" id="switchObj" onclick="objectSwitch()" class="button_all" value="">
 						<input type="button" onclick="removeObj()" class="button_all" value="Remove">
 					</div>
-					
-				<!--	<div id="controlBlock1">
-						<input type="checkbox" onclick="observingTimerSet(this)" id="ctrlReGetPosition">Observation</br>
-						<input type="checkbox" onclick="setTrackingFlag(this)" id="ctrlTracking">Tracking 
-					</div>-->
 				</div>
 				<div id="up_info">
 					<h3>Information</h3>
@@ -992,11 +980,6 @@
 						<p><b>Follows the track </b></p>
 						<p><b>Id </b></p>
 					</div>
-				<!--	<div id="navBlock2">
-						<p>Mouse position</p>
-						<p id="nav_mousePos">Latitude:</br>
-						Longitude:</p>
-					</div>-->
 				</div>
 				<div id="up_cameras">
 					<h3>Cameras</h3>
@@ -1017,13 +1000,22 @@
 		<!--	-->
 		</section>
 		<footer id="footer">O.L.Vi.</footer>
-		<div id="prompt_form_container" class="hidden">
-			<form id="prompt_form">
+		<div id="delete_obj_form_container" class="hidden">
+			<form id="delete_obj_prompt_form">
 				You are confident in your decision? You can't cancel this action!</br>
 				<input type="password" id="rem_pass" placeholder=" | Enter current password" required /></br>
 				<input type="button" onclick="removeFormSubmit()" class="button_all" value="Yes">
 				<input type="button" onclick="removeFormHide()" class="button_all" value="Cancel">
 				<div id="confirm_remove_object"></div>
+			</form>
+		</div>
+		<div id="create_track_form_container" class="hidden">
+			<form id="create_track_prompt_form">
+				Enter name for new path</br>
+				<input type="type" id="path_name" placeholder=" | Enter path name" required /></br>
+				<input type="button" onclick="createFormSubmit()" class="button_all" value="Create">
+				<input type="button" onclick="createFormHide(0)" class="button_all" value="Cancel">
+				<div id="confirm_create_object"></div>
 			</form>
 		</div>
 		<?php } ?>
