@@ -126,12 +126,12 @@
 						local_ctrl_icon.setHref(url+'plane.png');
 						local_ctrl_style.getIconStyle().setIcon(local_ctrl_icon); //применяет значок к стилю
 					
-						if(local_sample>objects_array.length && local_creationFlag) {
+					/*	if(local_sample>objects_array.length && local_creationFlag) {
 							for(var i=0;i<local_sample;i++) {
 								ge.getFeatures().removeChild(placemarks[i]);
 								ge.getFeatures().removeChild(local_lineStringPlacemark[i]);
 							}
-						} 						
+						}*/ 						
 						objList.innerHTML = "";
 						for(var i=0;i<objects_array.length;i++) {
 						//alert("Step "+i);
@@ -231,7 +231,7 @@
 				loadObjectInfoTimer = setInterval(function() {updObjectInfo();},2000);
 
 				showTrackId = objects_array[findObject(o_id)].id_track;
-				if (showTrackId!="null") {
+				if (showTrackId!=null) {
 					getMarkersForTrack(showTrackId);
 					setTimeout(makeFlightPath, 500);
 				}
@@ -332,7 +332,9 @@
 				var admPass = document.getElementById("rem_pass").value;
 				var confirm = document.getElementById("confirm_remove_object");
 				if(admPass!="") {
-					removeChildObj(controlObjId);
+					if(objects_array[findObject(controlObjId)].status == "on") {
+						removeChildObj(controlObjId);
+					}
 					$$a({
 						type:'post',//тип запроса: get,post либо head
 						url: url+'POSTremoveObject.php',//url адрес файла обработчика
@@ -357,7 +359,7 @@
 			}
 			
 			function changeObjTrack(id) {
-				if(id!="null"){
+				if(id!=null){
 					$$a({
 						type:'post',//тип запроса: get,post либо head
 						url: url+'POSTchangeObjTrack.php',//url адрес файла обработчика
@@ -367,6 +369,7 @@
 							document.getElementById("up_tracksSelector").value="null";
 						}
 					});
+					alert("changeObjTrack -> makeFlightPath");
 					getMarkersForTrack(id);
 					showTrackId = id;
 					setTimeout(makeFlightPath, 500);
@@ -607,6 +610,7 @@
 			var finishPoint = new google.maps.Marker();
 			var iconUrl = "http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|";
 			function makeFlightPath() {
+			alert("makeFlightPath");
 				setMarkersToNULL();
 				flightPlanCoordinates = [];
 				
